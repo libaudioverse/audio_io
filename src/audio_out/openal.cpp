@@ -14,7 +14,7 @@
 #include <al/alc.h>
 #include <atomic>
 
-namespace audio_out {
+namespace audio_io {
 
 //Justification for ugliness and supurfluous comments: this is OpenAL.
 //the mutex to make sure that nothing touches OpenAL while something else is.

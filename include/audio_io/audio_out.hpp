@@ -8,7 +8,7 @@
 #include <thread>
 #include <functional>
 
-namespace audio_out {
+namespace audio_io {
 
 /**A physical output.*/
 class Device {

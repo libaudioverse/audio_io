@@ -1,2 +1,2 @@
-# audio_out
+# audio_io
 C++ classes for cross-platform audio output

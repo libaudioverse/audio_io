@@ -13,7 +13,7 @@
 #include <windows.h>
 #include <mmreg.h> //WAVEFORMATEXTENSIBLE
 
-namespace audio_out {
+namespace audio_io {
 
 WAVEFORMATEXTENSIBLE makeFormat(unsigned int channels, unsigned int sr, bool isExtended) {
 	//lookup table so we can easily pull out masks.

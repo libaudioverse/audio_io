@@ -10,7 +10,7 @@
 #include <thread>
 #include <chrono>
 
-namespace audio_out {
+namespace audio_io {
 
 /**Code common to all backends, i.e. enumeration.*/
 
