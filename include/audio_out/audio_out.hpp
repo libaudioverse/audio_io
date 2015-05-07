@@ -1,5 +1,4 @@
 #pragma once
-#include "../libaudioverse.h"
 #include <vector>
 #include <set>
 #include <memory>
@@ -9,7 +8,7 @@
 #include <thread>
 #include <functional>
 
-namespace libaudioverse_implementation {
+namespace audio_out {
 
 /**A physical output.*/
 class Device {

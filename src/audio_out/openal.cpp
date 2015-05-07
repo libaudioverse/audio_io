@@ -1,7 +1,4 @@
-#include <libaudioverse/libaudioverse.h>
-#include <libaudioverse/private/audio_devices.hpp>
-#include <libaudioverse/private/resampler.hpp>
-#include <libaudioverse/private/errors.hpp>
+#include <audio_out/audio_out.hpp>
 #include <string>
 #include <vector>
 #include <memory>
@@ -17,7 +14,7 @@
 #include <al/alc.h>
 #include <atomic>
 
-namespace libaudioverse_implementation {
+namespace audio_out {
 
 //Justification for ugliness and supurfluous comments: this is OpenAL.
 //the mutex to make sure that nothing touches OpenAL while something else is.

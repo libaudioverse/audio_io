@@ -1,8 +1,4 @@
-#include <libaudioverse/libaudioverse.h>
-#include <libaudioverse/private/audio_devices.hpp>
-#include <libaudioverse/private/resampler.hpp>
-#include <libaudioverse/private/data.hpp>
-#include <libaudioverse/private/errors.hpp>
+#include <audio_out/audio_out.hpp>
 #include <string>
 #include <vector>
 #include <functional>
@@ -14,7 +10,7 @@
 #include <thread>
 #include <chrono>
 
-namespace libaudioverse_implementation {
+namespace audio_out {
 
 /**Code common to all backends, i.e. enumeration.*/
 

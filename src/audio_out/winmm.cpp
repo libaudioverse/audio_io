@@ -1,7 +1,4 @@
-#include <libaudioverse/libaudioverse.h>
-#include <libaudioverse/private/audio_devices.hpp>
-#include <libaudioverse/private/resampler.hpp>
-#include <libaudioverse/private/errors.hpp>
+#include <audio_out/audio_out.hpp>
 #include <functional>
 #include <string>
 #include <vector>
@@ -16,7 +13,7 @@
 #include <windows.h>
 #include <mmreg.h> //WAVEFORMATEXTENSIBLE
 
-namespace libaudioverse_implementation {
+namespace audio_out {
 
 WAVEFORMATEXTENSIBLE makeFormat(unsigned int channels, unsigned int sr, bool isExtended) {
 	//lookup table so we can easily pull out masks.
