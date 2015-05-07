@@ -49,7 +49,6 @@ class DeviceFactory {
 	virtual ~DeviceFactory();
 	virtual std::vector<std::string> getOutputNames() = 0;
 	virtual std::vector<int> getOutputMaxChannels() = 0;
-
 	virtual std::shared_ptr<Device> createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, unsigned int mixAhead) = 0;
 	virtual unsigned int getOutputCount();
 	virtual std::string getName();
