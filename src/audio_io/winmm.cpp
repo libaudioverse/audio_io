@@ -1,4 +1,5 @@
-#include <audio_out/audio_out.hpp>
+#include <audio_io/audio_io.hpp>
+#include <audio_io/audio_io_private.hpp>
 #include <functional>
 #include <string>
 #include <vector>
@@ -14,6 +15,7 @@
 #include <mmreg.h> //WAVEFORMATEXTENSIBLE
 
 namespace audio_io {
+namespace private {
 
 WAVEFORMATEXTENSIBLE makeFormat(unsigned int channels, unsigned int sr, bool isExtended) {
 	//lookup table so we can easily pull out masks.
@@ -255,4 +257,5 @@ DeviceFactory* createWinmmDeviceFactory() {
 	return fact;
 }
 
-}
+} //end namespace private
+} //end namespace audio_io

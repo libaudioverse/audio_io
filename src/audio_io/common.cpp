@@ -1,4 +1,5 @@
-#include <audio_out/audio_out.hpp>
+#include <audio_io/audio_io.hpp>
+#include <audio_io/audio_io_private.hpp>
 #include <string>
 #include <vector>
 #include <functional>
@@ -11,6 +12,7 @@
 #include <chrono>
 
 namespace audio_io {
+namespace private {
 
 /**Code common to all backends, i.e. enumeration.*/
 
@@ -132,4 +134,5 @@ std::string DeviceFactory::getName() {
 	return "Invalid backend: subclass failed to implement";
 }
 
-}
+} //end namespace private
+} //end namespace audio_io
