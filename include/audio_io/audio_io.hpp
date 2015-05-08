@@ -12,6 +12,7 @@ namespace audio_io {
 
 /**A physical output.*/
 class OutputDevice {
+	virtual ~OutputDevice() {}
 };
 
 class OutputDeviceFactory {
