@@ -1,6 +1,8 @@
 #pragma once
 #include "audio_io.hpp"
+#include "speex_resampler_config.h"
 #include <vector>
+#include <list>
 #include <set>
 #include <memory>
 #include <utility>
@@ -13,12 +15,29 @@
 //Do not include or use this file in public code directly.
 
 namespace audio_io {
-namespace private {
+namespace implementation {
+
+class Resampler {
+	public:
+	Resampler(int inputFrameCount, int inputChannels, int inputSr, int outputSr);
+	//returns frames written, not samples.
+	int write(float* dest, int maxFrameCount);
+	//this copies, the buffer can be reused.
+	void read(float* source);
+	//note the estimate: this is not necessarily sample-accurate. It's a rough estimate, primarily for the push node.
+	int estimateAvailableFrames();
+	private:
+	float delta = 0.0f;
+	std::list<float*> queue, done_queue;
+	int offset=0, input_frame_count, input_channels, input_sr, output_sr;
+	SpeexResamplerState* spx_resampler= nullptr;
+	int spx_error= 0;
+};
 
 class OutputDeviceImplementation: public OutputDevice {
 	protected:
-	Device() = default;
-	virtual ~Device();
+	OutputDeviceImplementation() = default;
+	virtual ~OutputDeviceImplementation();
 	//function parameters: output buffer, number of channels to write.
 	virtual void init(std::function<void(float*, int)> getBuffer, unsigned int inputBufferFrames, unsigned int inputBufferSr, unsigned int channels, unsigned int outputSr, unsigned int mixAhead); //second step fn initialization. We can't just fall through to the constructor.
 	virtual void start(); //final step in initialization via subclasses: starts the background thread.
@@ -44,22 +63,26 @@ class OutputDeviceImplementation: public OutputDevice {
 	std::thread mixing_thread;
 	std::function<void(float*, int)> get_buffer;
 	bool started = false;
-	friend class DeviceFactory;
+	friend class OutputDeviceFactoryImplementation;
 };
 
 class OutputDeviceFactoryImplementation: public OutputDeviceFactory {
+	public:
+	virtual ~OutputDeviceFactoryImplementation();
+	//these two are overridden here, others come later.
+	virtual unsigned int getOutputCount();
+	virtual std::string getName();
 	protected:
-	std::vector<std::weak_ptr<Device>> created_devices;
+	std::vector<std::weak_ptr<OutputDeviceImplementation>> created_devices;
 	int output_count = 0;
 };
 
-typedef DeviceFactory* (*DeviceFactoryCreationFunction)();
-DeviceFactory* createWinmmDeviceFactory();
-DeviceFactory* createOpenALDeviceFactory();
+typedef OutputDeviceFactory* (*OutputDeviceFactoryCreationFunction)();
+OutputDeviceFactory* createWinmmOutputDeviceFactory();
 
 //finally, the function that initializes all of this.
-void initializeDeviceFactory();
-void shutdownDeviceFactory();
+void initializeDeviceFactories();
+void shutdownDeviceFactories();
 
 }
 }

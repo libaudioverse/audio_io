@@ -15,7 +15,7 @@
 #include <mmreg.h> //WAVEFORMATEXTENSIBLE
 
 namespace audio_io {
-namespace private {
+namespace implementation {
 
 WAVEFORMATEXTENSIBLE makeFormat(unsigned int channels, unsigned int sr, bool isExtended) {
 	//lookup table so we can easily pull out masks.
@@ -48,11 +48,11 @@ WAVEFORMATEXTENSIBLE makeFormat(unsigned int channels, unsigned int sr, bool isE
 	return format;
 }
 
-class WinmmDevice: public  Device {
+class WinmmOutputDevice: public  OutputDeviceImplementation {
 	public:
 	//channels is what user requested, maxChannels is what the device can support at most.
 	//maxChannels comes from the DeviceFactory subclass and is cached; thus the parameter here.
-	WinmmDevice(std::function<void(float*, int)> getBuffer, unsigned int blockSize, unsigned int channels, unsigned int maxChannels, unsigned int mixAhead, UINT_PTR which, unsigned int sourceSr, unsigned int targetSr);
+	WinmmOutputDevice(std::function<void(float*, int)> getBuffer, unsigned int blockSize, unsigned int channels, unsigned int maxChannels, unsigned int mixAhead, UINT_PTR which, unsigned int sourceSr, unsigned int targetSr);
 	virtual void startup_hook();
 	virtual void shutdown_hook();
 	void winmm_mixer();
@@ -64,13 +64,12 @@ class WinmmDevice: public  Device {
 	std::atomic_flag winmm_mixing_flag;
 };
 
-WinmmDevice::WinmmDevice(std::function<void(float*, int)> getBuffer, unsigned int blockSize, unsigned int channels, unsigned int maxChannels, unsigned int mixAhead, UINT_PTR which, unsigned int sourceSr, unsigned int targetSr) {
+WinmmOutputDevice::WinmmOutputDevice(std::function<void(float*, int)> getBuffer, unsigned int blockSize, unsigned int channels, unsigned int maxChannels, unsigned int mixAhead, UINT_PTR which, unsigned int sourceSr, unsigned int targetSr) {
 	WAVEFORMATEXTENSIBLE format = {0};
 	mixAhead += 1;
 	winmm_headers.resize(mixAhead);
 	audio_data.resize(mixAhead);
 	buffer_state_changed_event = CreateEvent(NULL, FALSE, FALSE, NULL);
-	if(buffer_state_changed_event == NULL) throw LavErrorException(Lav_ERROR_CANNOT_INIT_AUDIO);
 	//we try all the channels until we get a device, and then bale out if we've still failed.
 	unsigned int chancounts[] = {8, 6, 2};
 	MMRESULT res = 0;
@@ -93,7 +92,7 @@ WinmmDevice::WinmmDevice(std::function<void(float*, int)> getBuffer, unsigned in
 		//we make this back into a waveformatex and request stereo.
 		format = makeFormat(2, targetSr, false);
 		res = waveOutOpen(&winmm_handle, which, (WAVEFORMATEX*)&format, (DWORD)buffer_state_changed_event, NULL, CALLBACK_EVENT);
-		if(res != MMSYSERR_NOERROR) throw LavErrorException(Lav_ERROR_CANNOT_INIT_AUDIO);
+		//error checking needs to go here.
 		outChannels = 2;
 	}
 	init(getBuffer, blockSize, sourceSr, outChannels, targetSr, mixAhead);
@@ -107,19 +106,19 @@ WinmmDevice::WinmmDevice(std::function<void(float*, int)> getBuffer, unsigned in
 	start();
 }
 
-void WinmmDevice::startup_hook() {
+void WinmmOutputDevice::startup_hook() {
 	winmm_mixing_flag.test_and_set();
 	winmm_mixing_thread = std::thread([this]() {winmm_mixer();});
 }
 
-void WinmmDevice::shutdown_hook() {
+void WinmmOutputDevice::shutdown_hook() {
 	winmm_mixing_flag.clear();
 	winmm_mixing_thread.join();
 	if(winmm_handle)
 	waveOutClose(winmm_handle);
 }
 
-void WinmmDevice::winmm_mixer() {
+void WinmmOutputDevice::winmm_mixer() {
 	float* workspace = new float[output_buffer_size];
 	while(winmm_mixing_flag.test_and_set()) {
 		while(1) {
@@ -146,12 +145,12 @@ void WinmmDevice::winmm_mixer() {
 	}
 }
 
-class WinmmDeviceFactory: public DeviceFactory {
+class WinmmOutputDeviceFactory: public OutputDeviceFactoryImplementation {
 	public:
-	WinmmDeviceFactory();
+	WinmmOutputDeviceFactory();
 	virtual std::vector<std::string> getOutputNames();
 	virtual std::vector<int> getOutputMaxChannels();
-	virtual std::shared_ptr<Device> createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, unsigned int mixAhead);
+	virtual std::shared_ptr<OutputDevice> createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, unsigned int mixAhead);
 	virtual unsigned int getOutputCount();
 	virtual bool scan();
 	std::string getName();
@@ -162,30 +161,30 @@ class WinmmDeviceFactory: public DeviceFactory {
 	unsigned int mapper_max_channels = 2, mapper_sr = 44100;
 };
 
-WinmmDeviceFactory::WinmmDeviceFactory() {
+WinmmOutputDeviceFactory::WinmmOutputDeviceFactory() {
 }
 
-std::vector<std::string> WinmmDeviceFactory::getOutputNames() {
+std::vector<std::string> WinmmOutputDeviceFactory::getOutputNames() {
 	return names;
 }
 
-std::vector<int> WinmmDeviceFactory::getOutputMaxChannels() {
+std::vector<int> WinmmOutputDeviceFactory::getOutputMaxChannels() {
 	return max_channels;
 }
 
-std::shared_ptr<Device> WinmmDeviceFactory::createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, unsigned int mixAhead) {
+std::shared_ptr<OutputDevice> WinmmOutputDeviceFactory::createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, unsigned int mixAhead) {
 	//first, we need to do sanity checks.
-	if(index < -1 || index > (int)names.size()) throw LavErrorException(Lav_ERROR_RANGE);
-	std::shared_ptr<Device> device = std::make_shared<WinmmDevice>(getBuffer, blockSize, channels, index != -1 ? max_channels[index] : mapper_max_channels, mixAhead, index == -1 ? WAVE_MAPPER : index, sr, index == -1 ? mapper_sr : srs[index]);
+	//error checking.
+	std::shared_ptr<OutputDeviceImplementation> device = std::make_shared<WinmmOutputDevice>(getBuffer, blockSize, channels, index != -1 ? max_channels[index] : mapper_max_channels, mixAhead, index == -1 ? WAVE_MAPPER : index, sr, index == -1 ? mapper_sr : srs[index]);
 	created_devices.push_back(device);
 	return device;
 }
 
-unsigned int WinmmDeviceFactory::getOutputCount() {
+unsigned int WinmmOutputDeviceFactory::getOutputCount() {
 	return names.size();
 }
 
-std::string WinmmDeviceFactory::getName() {
+std::string WinmmOutputDeviceFactory::getName() {
 	return "Winmm";
 }
 
@@ -222,7 +221,7 @@ WinmmCapabilities getWinmmCapabilities(UINT index) {
 	return retval;
 }
 
-bool WinmmDeviceFactory::scan() {
+bool WinmmOutputDeviceFactory::scan() {
 	std::vector<std::string> newNames;
 	std::vector<int> newMaxChannels;
 	std::vector<unsigned int> newSrs; //we need this, because these are not easy to query.
@@ -248,8 +247,8 @@ bool WinmmDeviceFactory::scan() {
 	return true;
 }
 
-DeviceFactory* createWinmmDeviceFactory() {
-	WinmmDeviceFactory* fact = new WinmmDeviceFactory();
+OutputDeviceFactory* createWinmmOutputDeviceFactory() {
+	WinmmOutputDeviceFactory* fact = new WinmmOutputDeviceFactory();
 	if(fact->scan() == false) {
 		delete fact;
 		return nullptr;
@@ -257,5 +256,5 @@ DeviceFactory* createWinmmDeviceFactory() {
 	return fact;
 }
 
-} //end namespace private
+} //end namespace implementation
 } //end namespace audio_io

@@ -12,12 +12,12 @@
 #include <chrono>
 
 namespace audio_io {
-namespace private {
+namespace implementation {
 
 /**Code common to all backends, i.e. enumeration.*/
 
 //these are the two steps in initialization, and are consequently put before the destructor.
-void Device::init(std::function<void(float*, int)> getBuffer, unsigned int inputBufferFrames, unsigned int inputBufferSr, unsigned int channels, unsigned int outputSr, unsigned int mixAhead) {
+void OutputDeviceImplementation::init(std::function<void(float*, int)> getBuffer, unsigned int inputBufferFrames, unsigned int inputBufferSr, unsigned int channels, unsigned int outputSr, unsigned int mixAhead) {
 	input_buffer_frames = inputBufferFrames;
 	mix_ahead = mixAhead;
 	input_buffer_size = inputBufferFrames*channels;
@@ -39,13 +39,13 @@ void Device::init(std::function<void(float*, int)> getBuffer, unsigned int input
 	}
 }
 
-void Device::start() {
+void OutputDeviceImplementation::start() {
 	mixing_thread_continue.test_and_set();
 	mixing_thread = std::thread([this] () {mixingThreadFunction();});
 	started = true;
 }
 
-Device::~Device() {
+OutputDeviceImplementation::~OutputDeviceImplementation() {
 	stop();
 	if(buffers != nullptr)
 	for(unsigned int i = 0; i < mix_ahead+1; i++) {
@@ -55,13 +55,13 @@ Device::~Device() {
 	if(buffer_statuses) delete[] buffer_statuses;
 }
 
-void Device::stop() {
+void OutputDeviceImplementation::stop() {
 	if(started == false) return;
 	mixing_thread_continue.clear();
 	mixing_thread.join();
 }
 
-void Device::zeroOrNextBuffer(float* where) {
+void OutputDeviceImplementation::zeroOrNextBuffer(float* where) {
 	if(buffer_statuses[next_output_buffer].load() == 1) {
 		std::copy(buffers[next_output_buffer], buffers[next_output_buffer]+output_buffer_size, where);
 		buffer_statuses[next_output_buffer].store(0);
@@ -73,13 +73,13 @@ void Device::zeroOrNextBuffer(float* where) {
 	next_output_buffer %= mix_ahead+1;
 }
 
-void Device::startup_hook() {
+void OutputDeviceImplementation::startup_hook() {
 }
 
-void Device::shutdown_hook() {
+void OutputDeviceImplementation::shutdown_hook() {
 }
 
-void Device::mixingThreadFunction() {
+void OutputDeviceImplementation::mixingThreadFunction() {
 	bool hasFilledQueueFirstTime = false;
 	Resampler resampler(input_buffer_frames, channels, input_sr, output_sr);
 	unsigned int currentBuffer = 0;
@@ -119,20 +119,20 @@ void Device::mixingThreadFunction() {
 	shutdown_hook();
 }
 
-DeviceFactory::~DeviceFactory() {
+OutputDeviceFactoryImplementation::~OutputDeviceFactoryImplementation() {
 	for(auto p: created_devices) {
 		auto strong = p.lock();
 		if(strong) strong->stop();
 	}
 }
 
-unsigned int DeviceFactory::getOutputCount() {
+unsigned int OutputDeviceFactoryImplementation::getOutputCount() {
 	return (unsigned int)output_count;
 }
 
-std::string DeviceFactory::getName() {
+std::string OutputDeviceFactoryImplementation::getName() {
 	return "Invalid backend: subclass failed to implement";
 }
 
-} //end namespace private
+} //end namespace implementation
 } //end namespace audio_io
