@@ -1,5 +1,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.2)
 
+project(audio_io)
+
 OPTION(AUDIO_IO_BUILD_TESTS "Whether to build tests from audio_io" ON)
 
 if(${WIN32})
@@ -21,8 +23,10 @@ ${AUDIO_IO_FILES}
 )
 target_link_libraries(audio_io ${AUDIO_IO_NEEDED_LIBRARIES})
 
+if(${AUDIO_IO_BUILD_TESTS})
 add_executable(output
 src/tests/output.cpp
 )
 target_link_libraries(output audio_io)
 
+endif()
