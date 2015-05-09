@@ -66,12 +66,12 @@ void OutputDeviceImplementation::zeroOrNextBuffer(float* where) {
 	if(buffer_statuses[next_output_buffer].load() == 1) {
 		std::copy(buffers[next_output_buffer], buffers[next_output_buffer]+output_buffer_size, where);
 		buffer_statuses[next_output_buffer].store(0);
+		next_output_buffer += 1;
+		next_output_buffer %= mix_ahead+1;
 	}
 	else {
 		memset(where, 0, sizeof(float)*output_buffer_size);
 	}
-	next_output_buffer += 1;
-	next_output_buffer %= mix_ahead+1;
 }
 
 void OutputDeviceImplementation::mixingThreadFunction() {
