@@ -33,7 +33,7 @@ void OutputDeviceImplementation::init(std::function<void(float*, int)> getBuffer
 		output_buffer_frames = (unsigned int)(output_buffer_frames*(double)output_sr)/input_sr;
 	}
 	output_buffer_size = output_buffer_frames*channels;
-	buffers = new float*[mix_ahead];
+	buffers = new float*[mix_ahead+1];
 	for(unsigned int i = 0; i < mix_ahead+1; i++) {
 		buffers[i] = new float[output_buffer_size];
 	}
@@ -59,6 +59,7 @@ void OutputDeviceImplementation::stop() {
 	if(started == false) return;
 	mixing_thread_continue.clear();
 	mixing_thread.join();
+	started=false;
 }
 
 void OutputDeviceImplementation::zeroOrNextBuffer(float* where) {
@@ -73,12 +74,6 @@ void OutputDeviceImplementation::zeroOrNextBuffer(float* where) {
 	next_output_buffer %= mix_ahead+1;
 }
 
-void OutputDeviceImplementation::startup_hook() {
-}
-
-void OutputDeviceImplementation::shutdown_hook() {
-}
-
 void OutputDeviceImplementation::mixingThreadFunction() {
 	bool hasFilledQueueFirstTime = false;
 	Resampler resampler(input_buffer_frames, channels, input_sr, output_sr);
@@ -88,10 +83,6 @@ void OutputDeviceImplementation::mixingThreadFunction() {
 	float* resampledBlock= new float[output_buffer_frames*channels]();
 	while(mixing_thread_continue.test_and_set()) {
 		if(buffer_statuses[currentBuffer].load()) { //we've done this one, but the callback hasn't gotten to it yet.
-			if(hasFilledQueueFirstTime == false) {
-				startup_hook();
-				hasFilledQueueFirstTime = true;
-			}
 			if(sleepFor) std::this_thread::sleep_for(std::chrono::milliseconds(sleepFor));
 			continue;
 		}
@@ -116,7 +107,6 @@ void OutputDeviceImplementation::mixingThreadFunction() {
 		currentBuffer ++;
 		currentBuffer %= mix_ahead+1;
 	}
-	shutdown_hook();
 }
 
 OutputDeviceFactoryImplementation::~OutputDeviceFactoryImplementation() {

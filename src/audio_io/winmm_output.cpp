@@ -53,8 +53,8 @@ class WinmmOutputDevice: public  OutputDeviceImplementation {
 	//channels is what user requested, maxChannels is what the device can support at most.
 	//maxChannels comes from the DeviceFactory subclass and is cached; thus the parameter here.
 	WinmmOutputDevice(std::function<void(float*, int)> getBuffer, unsigned int blockSize, unsigned int channels, unsigned int maxChannels, unsigned int mixAhead, UINT_PTR which, unsigned int sourceSr, unsigned int targetSr);
-	virtual void startup_hook();
-	virtual void shutdown_hook();
+	~WinmmOutputDevice();
+	virtual void stop() override;
 	void winmm_mixer();
 	HWAVEOUT winmm_handle;
 	HANDLE buffer_state_changed_event;
@@ -103,19 +103,21 @@ WinmmOutputDevice::WinmmOutputDevice(std::function<void(float*, int)> getBuffer,
 		winmm_headers[i].dwBufferLength = sizeof(short)*blockSize*channels;
 		winmm_headers[i].dwFlags = WHDR_DONE;
 	}
+	winmm_mixing_flag.test_and_set();
+	winmm_mixing_thread = std::thread([this]() {winmm_mixer();});
 	start();
 }
 
-void WinmmOutputDevice::startup_hook() {
-	winmm_mixing_flag.test_and_set();
-	winmm_mixing_thread = std::thread([this]() {winmm_mixer();});
+WinmmOutputDevice::~WinmmOutputDevice() {
+	stop();
 }
 
-void WinmmOutputDevice::shutdown_hook() {
-	winmm_mixing_flag.clear();
-	winmm_mixing_thread.join();
-	if(winmm_handle)
-	waveOutClose(winmm_handle);
+void WinmmOutputDevice::stop() {
+	if(started) {
+		winmm_mixing_flag.clear();
+		winmm_mixing_thread.join();
+	}
+	OutputDeviceImplementation::stop();
 }
 
 void WinmmOutputDevice::winmm_mixer() {
@@ -143,6 +145,8 @@ void WinmmOutputDevice::winmm_mixer() {
 		}
 	WaitForSingleObject(buffer_state_changed_event, 5); //the timeout is to let us detect that we've been requested to die.
 	}
+	waveOutClose(winmm_handle);
+	winmm_handle=nullptr;
 }
 
 class WinmmOutputDeviceFactory: public OutputDeviceFactoryImplementation {

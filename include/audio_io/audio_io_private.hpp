@@ -42,9 +42,6 @@ class OutputDeviceImplementation: public OutputDevice {
 	virtual void init(std::function<void(float*, int)> getBuffer, unsigned int inputBufferFrames, unsigned int inputBufferSr, unsigned int channels, unsigned int outputSr, unsigned int mixAhead); //second step fn initialization. We can't just fall through to the constructor.
 	virtual void start(); //final step in initialization via subclasses: starts the background thread.
 	virtual void stop(); //stop the output.
-	//these hooks are run in the background thread, and should be overridden in subclasses.
-	virtual void startup_hook();
-	virtual void shutdown_hook();
 	virtual void zeroOrNextBuffer(float* where);
 	virtual void mixingThreadFunction();
 	unsigned int channels = 0;
@@ -79,10 +76,6 @@ class OutputDeviceFactoryImplementation: public OutputDeviceFactory {
 
 typedef OutputDeviceFactory* (*OutputDeviceFactoryCreationFunction)();
 OutputDeviceFactory* createWinmmOutputDeviceFactory();
-
-//finally, the function that initializes all of this.
-void initializeDeviceFactories();
-void shutdownDeviceFactories();
 
 }
 }
