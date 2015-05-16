@@ -145,6 +145,14 @@ void WinmmOutputDevice::winmm_mixer() {
 		}
 	WaitForSingleObject(buffer_state_changed_event, 5); //the timeout is to let us detect that we've been requested to die.
 	}
+	//we prepared these, we need to also kill them.  If we don't, very very bad things happen.
+	for(auto i= winmm_headers.begin(); i != winmm_headers.end(); i++) {
+		auto *header = &*i;
+		while((header->dwFlags & WHDR_DONE) == 0) {
+			std::this_thread::yield();
+		}
+		waveOutUnprepareHeader(winmm_handle, header, sizeof(WAVEHDR));
+	}
 	waveOutClose(winmm_handle);
 	winmm_handle=nullptr;
 }
