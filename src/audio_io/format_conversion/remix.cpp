@@ -72,7 +72,8 @@ void applyMixingMatrixInterleaved(int frames, float* input, float* output) {
 //Everything below here is public.
 using namespace implementation;
 
-void remixAudioInterleaved(int frames, int inputChannels, float* input, int outputChannels, float* output) {
+void remixAudioInterleaved(int frames, int inputChannels, float* input, int outputChannels, float* output, bool zeroFirst) {
+	if(zeroFirst) std::fill(output, output+frames*outputChannels, 0.0f);
 	if(inputChannels == 1 && outputChannels == 2) applyMixingMatrixInterleaved<mixing_matrix_1_2, 1, 2>(frames, input, output);
 	else if(inputChannels == 1 && outputChannels == 6) applyMixingMatrixInterleaved<mixing_matrix_1_6, 1, 6>(frames, input, output);
 	else if(inputChannels == 1 && outputChannels == 8) applyMixingMatrixInterleaved<mixing_matrix_1_8, 1, 8>(frames, input, output);
@@ -89,7 +90,8 @@ void remixAudioInterleaved(int frames, int inputChannels, float* input, int outp
 	else mixUnrecognizedInterleaved(frames, inputChannels, input, outputChannels, output);
 }
 
-void remixAudioUnInterleaved(int frames, int inputChannels, float** inputs, int outputChannels, float** outputs) {
+void remixAudioUninterleaved(int frames, int inputChannels, float** inputs, int outputChannels, float** outputs, bool zeroFirst) {
+	if(zeroFirst) for(int i = 0; i < outputChannels; i++) std::fill(outputs[i], outputs[i]+frames, 0.0f);
 	if(inputChannels == 1 && outputChannels == 2) applyMixingMatrixUninterleaved<mixing_matrix_1_2, 1, 2>(frames, inputs, outputs);
 	else if(inputChannels == 1 && outputChannels == 6) applyMixingMatrixUninterleaved<mixing_matrix_1_6, 1, 6>(frames, inputs, outputs);
 	else if(inputChannels == 1 && outputChannels == 8) applyMixingMatrixUninterleaved<mixing_matrix_1_8, 1, 8>(frames, inputs, outputs);
