@@ -11,6 +11,7 @@ set(AUDIO_IO_NEEDED_LIBRARIES winmm)
 endif()
 
 if(NOT ${AUDIO_IO_HANDLED_DEPENDENCIES})
+message("Building audio_io in standalone configuration.")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/speex_resampler_cpp/include")
 add_subdirectory(speex_resampler_cpp)
 endif()
