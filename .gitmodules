@@ -1,0 +1,3 @@
+[submodule "speex_resampler_cpp"]
+	path = speex_resampler_cpp
+	url = https://github.com/camlorn/speex_resampler_cpp.git

@@ -1,5 +1,6 @@
 #include <audio_io/audio_io.hpp>
 #include <audio_io/audio_io_private.hpp>
+#include <speex_resampler_cpp.hpp>
 #include <string>
 #include <vector>
 #include <functional>
@@ -76,7 +77,7 @@ void OutputDeviceImplementation::zeroOrNextBuffer(float* where) {
 
 void OutputDeviceImplementation::mixingThreadFunction() {
 	bool hasFilledQueueFirstTime = false;
-	Resampler resampler(input_buffer_frames, channels, input_sr, output_sr);
+	std::shared_ptr<speex_resampler_cpp::Resampler> resampler = speex_resampler_cpp::createResampler(input_buffer_frames, channels, input_sr, output_sr);
 	unsigned int currentBuffer = 0;
 	unsigned int sleepFor = (unsigned int)(((double)input_buffer_frames/input_sr)*1000);
 	float* currentBlock = new float[input_buffer_size]();
@@ -93,8 +94,8 @@ void OutputDeviceImplementation::mixingThreadFunction() {
 			unsigned int got = 0;
 			while(got < output_buffer_frames) {
 				get_buffer(currentBlock, channels);
-				resampler.read(currentBlock);
-				got += resampler.write(resampledBlock+got, output_buffer_frames-got);
+				resampler->read(currentBlock);
+				got += resampler->write(resampledBlock+got, output_buffer_frames-got);
 			}
 		}
 		if(is_resampling == false) {

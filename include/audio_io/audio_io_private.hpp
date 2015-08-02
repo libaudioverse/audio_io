@@ -1,6 +1,6 @@
 #pragma once
 #include "audio_io.hpp"
-#include "speex_resampler_config.h"
+#include <speex_resampler_cpp.hpp>
 #include <vector>
 #include <list>
 #include <set>
@@ -16,23 +16,6 @@
 
 namespace audio_io {
 namespace implementation {
-
-class Resampler {
-	public:
-	Resampler(int inputFrameCount, int inputChannels, int inputSr, int outputSr);
-	//returns frames written, not samples.
-	int write(float* dest, int maxFrameCount);
-	//this copies, the buffer can be reused.
-	void read(float* source);
-	//note the estimate: this is not necessarily sample-accurate. It's a rough estimate, primarily for the push node.
-	int estimateAvailableFrames();
-	private:
-	float delta = 0.0f;
-	std::list<float*> queue, done_queue;
-	int offset=0, input_frame_count, input_channels, input_sr, output_sr;
-	SpeexResamplerState* spx_resampler= nullptr;
-	int spx_error= 0;
-};
 
 class OutputDeviceImplementation: public OutputDevice {
 	protected:

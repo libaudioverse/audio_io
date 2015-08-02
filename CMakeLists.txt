@@ -3,15 +3,21 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 project(audio_io)
 
 OPTION(AUDIO_IO_BUILD_TESTS "Whether to build tests from audio_io" ON)
+OPTION(AUDIO_IO_HANDLED_DEPENDENCIES "Whether or not a parent script handles our dependencies.  Don't touch this, it's for Libaudioverse." OFF)
 
 if(${WIN32})
 add_definitions(-DAUDIO_IO_WINDOWS_BACKENDS)
 set(AUDIO_IO_NEEDED_LIBRARIES winmm)
 endif()
 
+if(NOT ${AUDIO_IO_HANDLED_DEPENDENCIES})
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/speex_resampler_cpp/include")
+add_subdirectory(speex_resampler_cpp)
+endif()
+
+SET(AUDIO_IO_NEEDED_LIBRARIES ${AUDIO_IO_NEEDED_LIBRARIES} speex_resampler_cpp)
+
 SET(AUDIO_IO_FILES
-src/audio_io/resampler.cpp
-src/audio_io/speex_resampler.c
 src/audio_io/common_output.cpp
 src/audio_io/winmm_output.cpp
 src/audio_io/factory_creation.cpp
