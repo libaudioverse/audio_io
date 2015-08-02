@@ -1,5 +1,5 @@
 #include <audio_io/audio_io.hpp>
-#include <audio_io/audio_io_private.hpp>
+#include <audio_io/private/audio_io.hpp>
 #include <speex_resampler_cpp.hpp>
 #include <string>
 #include <vector>

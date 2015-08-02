@@ -1,5 +1,5 @@
 #include <audio_io/audio_io.hpp>
-#include <audio_io/audio_io_private.hpp>
+#include <audio_io/private/audio_io.hpp>
 #include <memory>
 #include <utility>
 
