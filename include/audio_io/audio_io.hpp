@@ -24,4 +24,22 @@ class OutputDeviceFactory {
 
 std::shared_ptr<OutputDeviceFactory> getOutputDeviceFactory();
 
+/**The following functions work with mixing matrices.
+This includes applying and obtaining them.*/
+
+/**Remix a buffer:
+- The standard channel counts 1, 2, 6 (5.1) and 8 (7.1) are mixed between each other appropriately.
+- Otherwise, if input is mono and output is not mono, the input is copied to all channels.
+- Otherwise, we keep min(inputChannels, outputChannels) channels of audio data, and fill any remaining output channels with zero.
+
+These functions come in two variants.
+- The uninterleaved version expects audio data as contiguous frames.
+- The interleaved version expects audio data as an array of buffers.
+
+In-place usage is safe by design.
+*/
+
+void remixAudioInterleaved(int frames, int inputChannels, float* input, int outputChannels, float* output);
+void remixAudioUninterleaved(int frames, int inputChannels, float** inputs, int outputChannels, float** outputs);
+
 }

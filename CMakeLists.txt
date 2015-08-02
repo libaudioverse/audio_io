@@ -22,6 +22,7 @@ SET(AUDIO_IO_FILES
 src/audio_io/outputs/common_output.cpp
 src/audio_io/outputs/winmm_output.cpp
 src/audio_io/outputs/factory_creation.cpp
+src/audio_io/format_conversion/mixing_matrices.cpp
 )
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
