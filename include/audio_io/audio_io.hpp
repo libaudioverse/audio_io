@@ -36,10 +36,12 @@ These functions come in two variants.
 - The uninterleaved version expects audio data as contiguous frames.
 - The interleaved version expects audio data as an array of buffers.
 
-In-place usage is safe by design.
+In-place usage is not safe.
+
+zeroFirst is intended for applications that need to accumulate data; if true (the default) buffers are zeroed before use.
 */
 
-void remixAudioInterleaved(int frames, int inputChannels, float* input, int outputChannels, float* output);
-void remixAudioUninterleaved(int frames, int inputChannels, float** inputs, int outputChannels, float** outputs);
+void remixAudioInterleaved(int frames, int inputChannels, float* input, int outputChannels, float* output, bool zeroFirst = true);
+void remixAudioUninterleaved(int frames, int inputChannels, float** inputs, int outputChannels, float** outputs, bool zeroFirst = true);
 
 }
