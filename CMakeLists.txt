@@ -24,6 +24,7 @@ src/audio_io/outputs/winmm_output.cpp
 src/audio_io/outputs/factory_creation.cpp
 src/audio_io/format_conversion/mixing_matrices.cpp
 src/audio_io/format_conversion/remix.cpp
+src/audio_io/format_conversion/sample_format_converter.cpp
 )
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
