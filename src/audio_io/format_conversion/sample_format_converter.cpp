@@ -62,11 +62,12 @@ void SampleFormatConverter::refillOutputBuffer() {
 	//resample to resampler_workspace, then downmix to output_buffer.
 	else {
 		int required = output_frames;
-		while(required) {
-			required -= resampler->write(output_buffer, required);
+		int got = 0;
+		while(got < required) {
+			got += resampler->write(resampler_workspace+got*input_channels, required-got);
 			//We read first so that we can ensure that we're not about to build up latency.
 			//But we may not have gotten enough.
-			if(required > 0) {
+			if(got < required) {
 				callback(input_buffer, input_channels);
 				resampler->read(input_buffer);
 			}
