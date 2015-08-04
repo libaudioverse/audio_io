@@ -14,6 +14,8 @@ if(NOT ${AUDIO_IO_HANDLED_DEPENDENCIES})
 message("Building audio_io in standalone configuration.")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/speex_resampler_cpp/include")
 add_subdirectory(speex_resampler_cpp)
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/powercores/include")
+add_subdirectory(powercores)
 endif()
 
 SET(AUDIO_IO_NEEDED_LIBRARIES ${AUDIO_IO_NEEDED_LIBRARIES} speex_resampler_cpp)
@@ -25,6 +27,7 @@ src/audio_io/outputs/windows/winmm_output.cpp
 src/audio_io/format_conversion/mixing_matrices.cpp
 src/audio_io/format_conversion/remix.cpp
 src/audio_io/format_conversion/sample_format_converter.cpp
+src/audio_io/helpers/windows/single_threaded_apartment.cpp
 )
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
