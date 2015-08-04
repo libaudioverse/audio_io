@@ -42,4 +42,9 @@ src/tests/output.cpp
 )
 target_link_libraries(output audio_io)
 
+add_executable(enumeration
+src/tests/enumeration.cpp
+)
+target_link_libraries(enumeration audio_io)
+
 endif()
