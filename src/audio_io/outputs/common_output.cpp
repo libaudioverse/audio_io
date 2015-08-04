@@ -12,7 +12,7 @@ namespace implementation {
 /**Code common to all backends, i.e. enumeration.*/
 
 //these are the two steps in initialization, and are consequently put before the destructor.
-void OutputDeviceImplementation::init(std::function<void(float*, int)> getBuffer, int inputFrames, int inputChannels, int inputSr, int outputChannels, int outputSr) {
+void OutputDeviceImplementation::init(std::function<void(float*, int)> callback, int inputFrames, int inputChannels, int inputSr, int outputChannels, int outputSr) {
 	input_frames = inputFrames;
 	input_channels = inputChannels;
 	input_sr = inputSr;

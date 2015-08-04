@@ -22,6 +22,8 @@ output_sr(outputSr), output_channels(outputChannels) {
 	}
 	input_buffer = new float[inputBlockSize*inputChannels]();
 	output_buffer = new float[output_buffer_frames*outputChannels]();
+	consumed_output_frames = output_buffer_frames; //we have none available yet.
+	this->callback = callback;
 }
 
 SampleFormatConverter::~SampleFormatConverter() {
@@ -33,9 +35,14 @@ SampleFormatConverter::~SampleFormatConverter() {
 void SampleFormatConverter::write(int frames, float* buffer) {
 	while(frames) {
 		int available = std::min(frames, output_buffer_frames-consumed_output_frames);
-		if(available == 0) refillOutputBuffer();
+		//This is paranoia.  It shouldn't be possible for available to go negative.
+		if(available <= 0) {
+			refillOutputBuffer();
+			continue;
+		}
 		if(available) std::copy(output_buffer+consumed_output_frames*output_channels, output_buffer+consumed_output_frames*output_channels+available*output_channels, buffer);
 		frames -= available;
+		consumed_output_frames += available;
 	}
 }
 

@@ -28,8 +28,8 @@ class SampleFormatConverter {
 	//Holds resampled data, possibly before downmixing.
 	float* resampler_workspace = nullptr;
 	int input_sr, output_sr, input_channels, output_channels, input_block_size;
-	int output_buffer_frames, consumed_output_frames = 0;
-	int resampler_workspace_frames, consumed_resampler_frames = 0;
+	int output_buffer_frames, consumed_output_frames ;
+	int resampler_workspace_frames;
 	std::shared_ptr<speex_resampler_cpp::Resampler> resampler;
 };
 

@@ -15,7 +15,7 @@ class OutputDeviceImplementation: public OutputDevice {
 	OutputDeviceImplementation() = default;
 	virtual ~OutputDeviceImplementation();
 	//Callback parameters: output buffer, number of channels to write.
-	virtual void init(std::function<void(float*, int)> getBuffer, int inputFrames, int inputChannels, int inputSr, int outputChannels, int outputSr);
+	virtual void init(std::function<void(float*, int)> callback, int inputFrames, int inputChannels, int inputSr, int outputChannels, int outputSr);
 	//used by the factory to stop playing devices at shutdown.
 	//Destrructor code should go here.  The destructor should then delegate to this function.  It is an error to continue using objects after deinitialization of the factory.
 	virtual void stop();
