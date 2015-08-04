@@ -1,5 +1,5 @@
 #include <audio_io/audio_io.hpp>
-#include <audio_io/private/audio_io.hpp>
+#include <audio_io/private/audio_outputs.hpp>
 #include <audio_io/private/sample_format_converter.hpp>
 #include <string>
 #include <vector>
