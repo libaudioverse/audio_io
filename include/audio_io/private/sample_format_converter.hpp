@@ -14,7 +14,7 @@ namespace implementation {
 This class will also hold conversion from sample type to sample type, should such be needed in future.*/
 class SampleFormatConverter {
 	public:
-	SampleFormatConverter(std::function<void(float*, int)> callback, int inputBlockSize, int inputChannels, int inputSr, int outputChannels, int outputSr);
+	SampleFormatConverter(std::function<void(float*, int)> callback, int inputFrames, int inputChannels, int inputSr, int outputChannels, int outputSr);
 	~SampleFormatConverter();
 	void write(int frames, float* buffer);
 	private:
@@ -27,8 +27,8 @@ class SampleFormatConverter {
 	float* output_buffer = nullptr;
 	//Holds resampled data, possibly before downmixing.
 	float* resampler_workspace = nullptr;
-	int input_sr, output_sr, input_channels, output_channels, input_block_size;
-	int output_buffer_frames, consumed_output_frames ;
+	int input_sr, output_sr, input_channels, output_channels, input_frames;
+	int output_frames, consumed_output_frames ;
 	int resampler_workspace_frames;
 	std::shared_ptr<speex_resampler_cpp::Resampler> resampler;
 };

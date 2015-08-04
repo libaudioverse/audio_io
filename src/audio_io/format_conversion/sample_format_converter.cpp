@@ -9,20 +9,20 @@
 namespace audio_io {
 namespace implementation {
 
-SampleFormatConverter::SampleFormatConverter(std::function<void(float*, int)> callback, int inputBlockSize, int inputChannels, int inputSr, int outputChannels, int outputSr):
-input_block_size(inputBlockSize), input_sr(inputSr), input_channels(inputChannels),
+SampleFormatConverter::SampleFormatConverter(std::function<void(float*, int)> callback, int inputFrames, int inputChannels, int inputSr, int outputChannels, int outputSr):
+input_frames(inputFrames), input_sr(inputSr), input_channels(inputChannels),
 output_sr(outputSr), output_channels(outputChannels) {
-	output_buffer_frames = inputBlockSize*outputChannels; //the default, may get overridden in a second.
+	output_frames = input_frames; //the default, may get overridden in a second.
 	if(inputSr != outputSr) {
-		resampler = speex_resampler_cpp::createResampler(inputBlockSize, inputChannels, inputSr, outputSr);
-		int resamplerLength = inputBlockSize*outputSr/inputSr;
-		if(resamplerLength == 0) resamplerLength = inputBlockSize;
+		resampler = speex_resampler_cpp::createResampler(inputFrames, inputChannels, inputSr, outputSr);
+		int resamplerLength = inputFrames*outputSr/inputSr;
+		if(resamplerLength == 0) resamplerLength = inputFrames;
 		resampler_workspace = new float[resamplerLength*inputChannels]();
-		output_buffer_frames = resamplerLength*outputChannels;
+		output_frames = resamplerLength;
 	}
-	input_buffer = new float[inputBlockSize*inputChannels]();
-	output_buffer = new float[output_buffer_frames*outputChannels]();
-	consumed_output_frames = output_buffer_frames; //we have none available yet.
+	input_buffer = new float[input_frames*input_channels]();
+	output_buffer = new float[output_frames*output_channels]();
+	consumed_output_frames = output_frames; //we have none available yet.
 	this->callback = callback;
 }
 
@@ -33,16 +33,16 @@ SampleFormatConverter::~SampleFormatConverter() {
 }
 
 void SampleFormatConverter::write(int frames, float* buffer) {
-	while(frames) {
-		int available = std::min(frames, output_buffer_frames-consumed_output_frames);
-		//This is paranoia.  It shouldn't be possible for available to go negative.
-		if(available <= 0) {
+	int written = 0;
+	while(written != frames) {
+		int willWrite = std::min(frames-written, output_frames-consumed_output_frames);
+		if(willWrite <= 0) {
 			refillOutputBuffer();
 			continue;
 		}
-		if(available) std::copy(output_buffer+consumed_output_frames*output_channels, output_buffer+consumed_output_frames*output_channels+available*output_channels, buffer);
-		frames -= available;
-		consumed_output_frames += available;
+		std::copy(output_buffer+consumed_output_frames*output_channels, output_buffer+consumed_output_frames*output_channels+willWrite*output_channels, buffer+written*output_channels);
+		written+=willWrite;
+		consumed_output_frames += willWrite;
 	}
 }
 
@@ -55,13 +55,13 @@ void SampleFormatConverter::refillOutputBuffer() {
 		//Otherwise, we'll need a remix.
 		else {
 			callback(input_buffer, input_channels);
-			::audio_io::remixAudioInterleaved(input_block_size, input_channels, input_buffer, output_channels, output_buffer);
+			::audio_io::remixAudioInterleaved(input_frames, input_channels, input_buffer, output_channels, output_buffer);
 		}
 	}
 	//This is the alternative, slower path.
 	//resample to resampler_workspace, then downmix to output_buffer.
 	else {
-		int required = output_buffer_frames;
+		int required = output_frames;
 		while(required) {
 			required -= resampler->write(output_buffer, required);
 			//We read first so that we can ensure that we're not about to build up latency.
@@ -72,8 +72,8 @@ void SampleFormatConverter::refillOutputBuffer() {
 			}
 		}
 		//We either downmix or outright copy, depending if the channel counts are different.
-		if(input_channels == output_channels) std::copy(resampler_workspace, resampler_workspace+output_buffer_frames*output_channels, output_buffer);
-		else ::audio_io::remixAudioInterleaved(output_buffer_frames, input_channels, resampler_workspace, output_channels, output_buffer);
+		if(input_channels == output_channels) std::copy(resampler_workspace, resampler_workspace+output_frames*output_channels, output_buffer);
+		else ::audio_io::remixAudioInterleaved(output_frames, input_channels, resampler_workspace, output_channels, output_buffer);
 	}
 	consumed_output_frames = 0;
 }
