@@ -16,10 +16,12 @@ SingleThreadedApartment::SingleThreadedApartment() {
 	apartment_thread = powercores::safeStartThread(&SingleThreadedApartment::apartmentThreadFunction, this);
 	//Wait for the background thread to get a message queue.
 	while(ready.load() == 0) std::this_thread::yield();
+	apartment_thread_id = GetThreadId((HANDLE)apartment_thread.native_handle());
 }
 
 SingleThreadedApartment::~SingleThreadedApartment() {
 	sendMessage(sta_quit_message, 0, 0);
+	apartment_thread.join();
 }
 
 void SingleThreadedApartment::submitTask(std::function<void(void)> &task) {
@@ -32,7 +34,7 @@ void SingleThreadedApartment::submitTask(std::function<void(void)> &task) {
 }
 
 void SingleThreadedApartment::sendMessage(UINT msg, WPARAM wparam, LPARAM lparam) {
-	PostThreadMessage((DWORD)apartment_thread.native_handle(), msg, wparam, lparam);
+	PostThreadMessage(apartment_thread_id, msg, wparam, lparam);
 }
 
 void SingleThreadedApartment::apartmentThreadFunction() {

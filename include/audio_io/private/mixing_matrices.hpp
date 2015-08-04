@@ -1,3 +1,5 @@
+#pragma once
+
 namespace audio_io {
 namespace implementation {
 
