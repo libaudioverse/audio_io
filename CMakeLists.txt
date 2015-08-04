@@ -20,8 +20,8 @@ SET(AUDIO_IO_NEEDED_LIBRARIES ${AUDIO_IO_NEEDED_LIBRARIES} speex_resampler_cpp)
 
 SET(AUDIO_IO_FILES
 src/audio_io/outputs/common_output.cpp
-src/audio_io/outputs/winmm_output.cpp
 src/audio_io/outputs/factory_creation.cpp
+src/audio_io/outputs/windows/winmm_output.cpp
 src/audio_io/format_conversion/mixing_matrices.cpp
 src/audio_io/format_conversion/remix.cpp
 src/audio_io/format_conversion/sample_format_converter.cpp
