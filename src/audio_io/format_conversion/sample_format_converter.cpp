@@ -9,7 +9,7 @@
 namespace audio_io {
 namespace implementation {
 
-SampleFormatConverter::SampleFormatConverter(std::function<void(float*, int)> callback, int inputBlockSize, int inputSr, int inputChannels, int outputSr, int outputChannels):
+SampleFormatConverter::SampleFormatConverter(std::function<void(float*, int)> callback, int inputBlockSize, int inputChannels, int inputSr, int outputChannels, int outputSr):
 input_block_size(inputBlockSize), input_sr(inputSr), input_channels(inputChannels),
 output_sr(outputSr), output_channels(outputChannels) {
 	output_buffer_frames = inputBlockSize*outputChannels; //the default, may get overridden in a second.

@@ -14,7 +14,7 @@ namespace implementation {
 This class will also hold conversion from sample type to sample type, should such be needed in future.*/
 class SampleFormatConverter {
 	public:
-	SampleFormatConverter(std::function<void(float*, int)> callback, int inputBlockSize, int inputSr, int inputChannels, int outputSr, int outputChannels);
+	SampleFormatConverter(std::function<void(float*, int)> callback, int inputBlockSize, int inputChannels, int inputSr, int outputChannels, int outputSr);
 	~SampleFormatConverter();
 	void write(int frames, float* buffer);
 	private:

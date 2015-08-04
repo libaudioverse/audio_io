@@ -1,11 +1,13 @@
 #include <audio_io/audio_io.hpp>
 #include <audio_io/private/audio_io.hpp>
+#include <audio_io/private/sample_format_converter.hpp>
 #include <functional>
 #include <string>
 #include <vector>
 #include <memory>
 #include <utility>
 #include <mutex>
+#include <atomic>
 #include <map>
 #include <string.h>
 #include <algorithm>
@@ -54,7 +56,7 @@ class WinmmOutputDevice: public  OutputDeviceImplementation {
 	//maxChannels comes from the DeviceFactory subclass and is cached; thus the parameter here.
 	WinmmOutputDevice(std::function<void(float*, int)> getBuffer, unsigned int blockSize, unsigned int channels, unsigned int maxChannels, unsigned int mixAhead, UINT_PTR which, unsigned int sourceSr, unsigned int targetSr);
 	~WinmmOutputDevice();
-	virtual void stop() override;
+	void stop() override;
 	void winmm_mixer();
 	HWAVEOUT winmm_handle;
 	HANDLE buffer_state_changed_event;
@@ -95,17 +97,16 @@ WinmmOutputDevice::WinmmOutputDevice(std::function<void(float*, int)> getBuffer,
 		//error checking needs to go here.
 		outChannels = 2;
 	}
-	init(getBuffer, blockSize, sourceSr, outChannels, targetSr, mixAhead);
-	for(unsigned int i = 0; i < audio_data.size(); i++) audio_data[i] = new short[output_buffer_size];
+	init(getBuffer, blockSize, channels, sourceSr, outChannels, targetSr);
+	for(unsigned int i = 0; i < audio_data.size(); i++) audio_data[i] = new short[output_frames*output_channels];
 	//we can go ahead and set up the headers.
 	for(unsigned int i = 0; i < winmm_headers.size(); i++) {
 		winmm_headers[i].lpData = (LPSTR)audio_data[i];
-		winmm_headers[i].dwBufferLength = sizeof(short)*blockSize*channels;
+		winmm_headers[i].dwBufferLength = sizeof(short)*output_frames*output_channels;
 		winmm_headers[i].dwFlags = WHDR_DONE;
 	}
 	winmm_mixing_flag.test_and_set();
 	winmm_mixing_thread = std::thread([this]() {winmm_mixer();});
-	start();
 }
 
 WinmmOutputDevice::~WinmmOutputDevice() {
@@ -113,15 +114,15 @@ WinmmOutputDevice::~WinmmOutputDevice() {
 }
 
 void WinmmOutputDevice::stop() {
-	if(started) {
+	//Shut down the thread.
+	if(winmm_mixing_thread.joinable()) {
 		winmm_mixing_flag.clear();
 		winmm_mixing_thread.join();
 	}
-	OutputDeviceImplementation::stop();
 }
 
 void WinmmOutputDevice::winmm_mixer() {
-	float* workspace = new float[output_buffer_size];
+	float* workspace = new float[output_frames*output_channels];
 	while(winmm_mixing_flag.test_and_set()) {
 		while(1) {
 			short* nextBuffer = nullptr;
@@ -134,16 +135,16 @@ void WinmmOutputDevice::winmm_mixer() {
 				}
 			}
 			if(nextHeader == nullptr || nextBuffer == nullptr) break;
-			zeroOrNextBuffer(workspace);
+			sample_format_converter->write(output_frames, workspace);
 			waveOutUnprepareHeader(winmm_handle, nextHeader, sizeof(WAVEHDR));
-			for(unsigned int i = 0; i < output_buffer_size; i++) nextBuffer[i] = (short)(workspace[i]*32767);
+			for(unsigned int i = 0; i < output_frames*output_channels; i++) nextBuffer[i] = (short)(workspace[i]*32767);
 			nextHeader->dwFlags = 0;
-			nextHeader->dwBufferLength = sizeof(short)*output_buffer_size;
+			nextHeader->dwBufferLength = sizeof(short)*output_frames*output_channels;
 			nextHeader->lpData = (LPSTR)nextBuffer;
 			waveOutPrepareHeader(winmm_handle, nextHeader, sizeof(WAVEHDR));
 			waveOutWrite(winmm_handle, nextHeader, sizeof(WAVEHDR));
 		}
-	WaitForSingleObject(buffer_state_changed_event, 5); //the timeout is to let us detect that we've been requested to die.
+		WaitForSingleObject(buffer_state_changed_event, 5); //the timeout is to let us detect that we've been requested to die.
 	}
 	//we prepared these, we need to also kill them.  If we don't, very very bad things happen.
 	//This call ends playback.

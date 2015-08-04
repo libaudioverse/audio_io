@@ -2,47 +2,28 @@
 #include "../audio_io.hpp"
 #include <speex_resampler_cpp.hpp>
 #include <vector>
-#include <list>
-#include <set>
 #include <memory>
-#include <utility>
-#include <atomic>
-#include <mutex>
-#include <thread>
 #include <functional>
-
-//The details in this file are to be considered private.
-//Do not include or use this file in public code directly.
 
 namespace audio_io {
 namespace implementation {
+
+class SampleFormatConverter;
 
 class OutputDeviceImplementation: public OutputDevice {
 	protected:
 	OutputDeviceImplementation() = default;
 	virtual ~OutputDeviceImplementation();
-	//function parameters: output buffer, number of channels to write.
-	virtual void init(std::function<void(float*, int)> getBuffer, unsigned int inputBufferFrames, unsigned int inputBufferSr, unsigned int channels, unsigned int outputSr, unsigned int mixAhead); //second step fn initialization. We can't just fall through to the constructor.
-	virtual void start(); //final step in initialization via subclasses: starts the background thread.
-	virtual void stop(); //stop the output.
-	virtual void zeroOrNextBuffer(float* where);
-	virtual void mixingThreadFunction();
-	unsigned int channels = 0;
-	unsigned int mix_ahead = 0;
-	unsigned int input_buffer_size, output_buffer_size, input_buffer_frames, output_buffer_frames;
-	unsigned int input_sr = 0;
-	unsigned int output_sr = 0;
-	bool is_resampling = false;
-	bool should_apply_mixing_matrix = false;
-	unsigned int next_output_buffer = 0;
-	unsigned int callback_buffer_index = 0;
-
-	float** buffers = nullptr;
-	std::atomic<int>* buffer_statuses = nullptr;
-	std::atomic_flag mixing_thread_continue;
-	std::thread mixing_thread;
-	std::function<void(float*, int)> get_buffer;
-	bool started = false;
+	//Callback parameters: output buffer, number of channels to write.
+	virtual void init(std::function<void(float*, int)> getBuffer, int inputFrames, int inputChannels, int inputSr, int outputChannels, int outputSr);
+	//used by the factory to stop playing devices at shutdown.
+	//Destrructor code should go here.  The destructor should then delegate to this function.  It is an error to continue using objects after deinitialization of the factory.
+	virtual void stop();
+	int input_frames, input_channels, input_sr, output_channels, output_sr;
+	//This one is an estimate.  The amount of frames to write to trigger the callback approximately once.
+	int output_frames;
+	std::shared_ptr<SampleFormatConverter> sample_format_converter;
+	std::function<void(float*, int)> callback;
 	friend class OutputDeviceFactoryImplementation;
 };
 
