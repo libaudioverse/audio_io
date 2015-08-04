@@ -1,4 +1,6 @@
+#pragma once
 #include <thread>
+#include <future>
 #include <type_traits>
 #include <atomic>
 #include <functional>
@@ -19,16 +21,17 @@ class SingleThreadedApartment {
 	/*Run a call in the apartment.
 	This algorithm is threadsafe, but performance may suffer under contension.*/
 	template<typename FuncT, typename... ArgsT>
-	typename std::result_of<FuncT(ArgsT...)>::type runInApartment(FuncT callable, ArgsT... args) {
+	typename std::result_of<FuncT(ArgsT...)>::type callInApartment(FuncT callable, ArgsT... args) {
 		std::promise<typename std::result_of<FuncT(ArgsT...)>::type> promise;
 		auto future = promise.get_future();
-		std::function<void(void)> task ([&] () {
-			promise.set_value(callable(args));
-		});
+		std::function<typename std::result_of<FuncT(ArgsT...)>::type (ArgsT...)> wrappedCallable = callable;
+		std::function<void(void)> task = [&] ()->void {
+			promise.set_value(wrappedCallable(args...));
+		};
 		submitTask(task);
 		future.wait();
 		return future.get();
-	}
+	}	
 	
 	private:
 	//Send a task to the thread.
@@ -43,6 +46,7 @@ class SingleThreadedApartment {
 	//Goes to 1 once the apartment thread has made the message queue.
 	std::atomic<int> ready;
 	std::thread apartment_thread;
+	DWORD apartment_thread_id;
 };
 
 }

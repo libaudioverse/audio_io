@@ -7,6 +7,9 @@
 #include <map>
 #include <string>
 #include <windows.h>
+#include <mmdeviceapi.h>
+#include <audioclient.h>
+
 
 namespace audio_io {
 
@@ -33,6 +36,12 @@ class WasapiOutputDeviceFactory: public OutputDeviceFactoryImplementation {
 	void rescan();
 	std::map<int, std::string> ids_to_id_strings;
 };
+
+//These are constants for the interfaces we care about.
+const CLSID CLSID_MMDeviceEnumerator = __uuidof(MMDeviceEnumerator);
+const IID IID_IMMDeviceEnumerator = __uuidof(IMMDeviceEnumerator);
+const IID IID_IMMDevice = __uuidof(IMMDevice);
+const IID IID_IAudioClient = __uuidof(IAudioClient);
 
 }
 }
