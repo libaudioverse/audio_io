@@ -4,10 +4,10 @@
 #include <chrono>
 
 #define PI 3.14159
-#define BLOCK_SIZE 1024
-#define MIX_AHEAD 3
-#define CHANNELS 2
-#define SR 48000
+int channels = 2;
+int mix_ahead = 0;
+int sr = 44100;
+int block_size = 1024;
 
 class SineGen {
 	public:
@@ -17,11 +17,11 @@ class SineGen {
 };
 
 SineGen::SineGen(float freq): frequency(freq), phase(0) {
-	delta= freq/SR;
+	delta= freq/sr;
 }
 
 void SineGen::operator()(float* block, int channels) {
-	for(int i = 0; i < BLOCK_SIZE; i++) {
+	for(int i = 0; i < block_size; i++) {
 		for(int j = 0; j < channels; j++) block[i*channels+j] = sinf(2*PI*phase);
 		phase+=delta;
 	}
@@ -29,8 +29,16 @@ void SineGen::operator()(float* block, int channels) {
 }
 
 int main(int argc, char** args) {
+	if(argc != 4) {
+		printf("Usage: output <sr> <block_size> <mixahead>\n");
+		return 0;
+	}
+	sscanf(args[1], "%i", &sr);
+	sscanf(args[2], "%i", &block_size);
+	sscanf(args[3], "%i", &mix_ahead);
+	printf("Playing with sr=%i, block_size=%i, mix_ahead=%i\n", sr, block_size, mix_ahead);
 	auto gen= SineGen(300.0);
 	auto factory = audio_io::getOutputDeviceFactory();
-	auto dev = factory->createDevice(gen, -1, CHANNELS, SR, BLOCK_SIZE, MIX_AHEAD);
+	auto dev = factory->createDevice(gen, -1, channels, sr, block_size, mix_ahead);
 	std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 }
