@@ -40,6 +40,7 @@ class OutputDeviceFactoryImplementation: public OutputDeviceFactory {
 
 typedef OutputDeviceFactory* (*OutputDeviceFactoryCreationFunction)();
 OutputDeviceFactory* createWinmmOutputDeviceFactory();
-
+OutputDeviceFactory* createWasapiOutputDeviceFactory();
+	
 }
 }
