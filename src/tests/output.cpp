@@ -37,9 +37,10 @@ int main(int argc, char** args) {
 	sscanf(args[2], "%i", &sr);
 	sscanf(args[3], "%i", &block_size);
 	sscanf(args[4], "%i", &mix_ahead);
-	printf("Playing with channels=%i sr=%i, block_size=%i, mix_ahead=%i\n", channels, sr, block_size, mix_ahead);
+	printf("Playing with channels=%i, sr=%i, block_size=%i, mix_ahead=%i\n", channels, sr, block_size, mix_ahead);
 	auto gen= SineGen(300.0);
 	auto factory = audio_io::getOutputDeviceFactory();
+	printf("Using factory: %s\n", factory->getName().c_str());
 	auto dev = factory->createDevice(gen, -1, channels, sr, block_size, mix_ahead);
 	std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 }
