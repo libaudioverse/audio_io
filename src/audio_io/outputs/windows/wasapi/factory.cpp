@@ -1,21 +1,27 @@
+//This is undocumented  COM magic.  Including this here should be sufficient for most of the library, but maybe not.
+#include <initguid.h>
 #include "wasapi.hpp"
 #include <audio_io/private/audio_outputs.hpp>
 #include <audio_io/private/single_threaded_apartment.hpp>
 #include <windows.h>
 #include <audioclient.h>
 #include <mmdeviceapi.h>
+#include <functiondiscoverykeys_devpkey.h>
 
 namespace audio_io {
 namespace implementation {
 
 WasapiOutputDeviceFactory::WasapiOutputDeviceFactory() {
+	APARTMENTCALL(CoCreateInstance, CLSID_MMDeviceEnumerator, nullptr, CLSCTX_ALL, IID_IMMDeviceEnumerator, (void**)&enumerator);
+	//todo: errors.
 	rescan();
 }
 
 WasapiOutputDeviceFactory::~WasapiOutputDeviceFactory() {
+	if(enumerator) enumerator->Release();
 }
 
-std::vector<std::string> WasapiOutputDeviceFactory::getOutputNames() {
+std::vector<std::wstring> WasapiOutputDeviceFactory::getOutputNames() {
 	return names;
 }
 
@@ -28,7 +34,7 @@ std::shared_ptr<OutputDevice> WasapiOutputDeviceFactory::createDevice(std::funct
 }
 
 unsigned int WasapiOutputDeviceFactory::getOutputCount() {
-	return 0;
+	return names.size();
 }
 
 std::string WasapiOutputDeviceFactory::getName() {
@@ -36,11 +42,39 @@ std::string WasapiOutputDeviceFactory::getName() {
 }
 
 void WasapiOutputDeviceFactory::rescan() {
+	names.clear();
+	max_channels.clear();
+	ids_to_id_strings.clear();
+	IMMDeviceCollection *collection;
+	enumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &collection);
+	UINT count;
+	collection->GetCount(&count);
+	for(UINT i = 0; i < count; i++) {
+		std::wstring name;
+		std::wstring identifierString;
+		int channels;
+		IMMDevice *device;
+		collection->Item(i, &device);
+		//We have to open the property store and use it to get the informationh.
+		IPropertyStore *properties;
+		device->OpenPropertyStore(STGM_READ, &properties);
+		PROPVARIANT prop;
+		properties->GetValue(PKEY_AudioEngine_DeviceFormat, &prop);
+		WAVEFORMATEX *format = (WAVEFORMATEX*)prop.blob.pBlobData;
+		channels = format->nChannels;
+		//Easy string is the identifier.
+		LPWSTR identifier;
+		device->GetId(&identifier);
+		identifierString = std::wstring(identifier);
+		CoTaskMemFree(identifier);
+		properties->GetValue(PKEY_DeviceInterface_FriendlyName, &prop);
+		LPWSTR rawname = prop.pwszVal;
+		name = std::wstring(rawname);
+		this->max_channels.push_back(channels);
+		names.push_back(name);
+		ids_to_id_strings[i] = identifierString;
+	}
 }
-
-
-//There's a deficiency somewhere.  This makes safe COM calls.
-#define SAFECALL(func, ...) (sta.callInApartment([&] () {return func(__VA_ARGS__);}))
 
 OutputDeviceFactory* createWasapiOutputDeviceFactory() {
 	//In order to determine if we have Wasapi, we attempt to open and close the default output device without error.
@@ -52,12 +86,12 @@ OutputDeviceFactory* createWasapiOutputDeviceFactory() {
 		auto res = sta.callInApartment(CoCreateInstance, CLSID_MMDeviceEnumerator, nullptr, CLSCTX_ALL, IID_IMMDeviceEnumerator, (void**)&enumerator);
 		if(IS_ERROR(res)) return nullptr;
 		//Attempt to get the default device.
-		res = SAFECALL(enumerator->GetDefaultAudioEndpoint, eRender, eMultimedia, &default_device);
+		res = APARTMENTCALL(enumerator->GetDefaultAudioEndpoint, eRender, eMultimedia, &default_device);
 		if(IS_ERROR(res)) {
 			enumerator->Release();
 			return nullptr;
 		}
-		res = SAFECALL(default_device->Activate, IID_IAudioClient, CLSCTX_ALL, NULL, (void**)&client);
+		res = APARTMENTCALL(default_device->Activate, IID_IAudioClient, CLSCTX_ALL, NULL, (void**)&client);
 		if(IS_ERROR(res)) {
 			default_device->Release();
 			enumerator->Release();
@@ -65,7 +99,7 @@ OutputDeviceFactory* createWasapiOutputDeviceFactory() {
 		}
 		//We now have an IAudioClient.  We can attempt to initialize it with the default mixer format in shared mode, which is supposed to always be accepted.
 		WAVEFORMATEX *format = nullptr;
-		res = SAFECALL(client->GetMixFormat, &format);
+		res = APARTMENTCALL(client->GetMixFormat, &format);
 		if(IS_ERROR(res)) {
 			client->Release();
 			default_device->Release();
@@ -74,7 +108,7 @@ OutputDeviceFactory* createWasapiOutputDeviceFactory() {
 		}
 		//1e6 nanoseconds in a millisecond.
 		//We don't request a specific buffer length, we just want to know if we can open and otherwise don't care.
-		res = SAFECALL(client->Initialize, AUDCLNT_SHAREMODE_SHARED, 0, 0, 0, format, NULL);
+		res = APARTMENTCALL(client->Initialize, AUDCLNT_SHAREMODE_SHARED, 0, 0, 0, format, NULL);
 		if(IS_ERROR(res)) {
 			client->Release();
 			default_device->Release();

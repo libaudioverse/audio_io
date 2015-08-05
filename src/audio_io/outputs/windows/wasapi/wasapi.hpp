@@ -24,17 +24,20 @@ class WasapiOutputDeviceFactory: public OutputDeviceFactoryImplementation {
 	public:
 	WasapiOutputDeviceFactory();
 	~WasapiOutputDeviceFactory();
-	std::vector<std::string> getOutputNames() override;
+	std::vector<std::wstring> getOutputNames() override;
 	std::vector<int> getOutputMaxChannels() override;
 	std::shared_ptr<OutputDevice> createDevice(std::function<void(float*, int)> callback, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, unsigned int mixAhead) override;
 	unsigned int getOutputCount() override;
-	std::string getName() override;
+	std::string getName();
 	private:
-	std::vector<std::string> names;
+	void rescan();
+	std::vector<std::wstring> names;
 	std::vector<int> max_channels;
 	//Mmdevapi uses device identifier strings as opposed to integers, so we need to map.
-	void rescan();
-	std::map<int, std::string> ids_to_id_strings;
+	std::map<int, std::wstring> ids_to_id_strings;
+	//The device enumerator, kept here so that we can avoid remaking it all the time.
+	IMMDeviceEnumerator* enumerator = nullptr;
+	SingleThreadedApartment sta;
 };
 
 //These are constants for the interfaces we care about.
@@ -42,6 +45,9 @@ const CLSID CLSID_MMDeviceEnumerator = __uuidof(MMDeviceEnumerator);
 const IID IID_IMMDeviceEnumerator = __uuidof(IMMDeviceEnumerator);
 const IID IID_IMMDevice = __uuidof(IMMDevice);
 const IID IID_IAudioClient = __uuidof(IAudioClient);
+
+//Call the specified callable with the specified args (must be at least one)in apartment ast.
+#define APARTMENTCALL(func, ...) (sta.callInApartment([&] () {return func(__VA_ARGS__);}))
 
 }
 }
