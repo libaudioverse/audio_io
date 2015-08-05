@@ -18,6 +18,21 @@ class OutputDevice;
 namespace implementation {
 
 class WasapiOutputDevice: public OutputDeviceImplementation {
+	public:
+	WasapiOutputDevice(std::function<void(float*, int)> callback, IMMDevice* device, int inputFrames, int inputChannels, int inputSr, int mixAhead);
+	~WasapiOutputDevice();
+	void stop() override;
+	private:
+	void wasapiMixingThreadFunction();
+	std::thread wasapi_mixing_thread;
+	std::atomic_flag should_continue;
+	SingleThreadedApartment sta; //Named so we can use APARTMENTCALL.
+	IAudioClient* client = nullptr;
+	IMMDevice* device = nullptr;
+	//This can be Waveformatex, but we use the larger struct because sometimes it's not.
+	WAVEFORMATEXTENSIBLE format;
+	REFERENCE_TIME period;
+	//The rest of the variables live in the mixing thread.
 };
 
 class WasapiOutputDeviceFactory: public OutputDeviceFactoryImplementation {
@@ -45,6 +60,9 @@ const CLSID CLSID_MMDeviceEnumerator = __uuidof(MMDeviceEnumerator);
 const IID IID_IMMDeviceEnumerator = __uuidof(IMMDeviceEnumerator);
 const IID IID_IMMDevice = __uuidof(IMMDevice);
 const IID IID_IAudioClient = __uuidof(IAudioClient);
+const IID IID_IAudioRenderClient = __uuidof(IAudioRenderClient);
+const IID IID_IAudioClock = __uuidof(IAudioClock);
+
 
 //Call the specified callable with the specified args (must be at least one)in apartment ast.
 #define APARTMENTCALL(func, ...) (sta.callInApartment([&] () {return func(__VA_ARGS__);}))
