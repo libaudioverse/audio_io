@@ -48,7 +48,9 @@ WasapiOutputDevice::WasapiOutputDevice(std::function<void(float*, int)> callback
 	if(res != S_OK) return;
 	printf("Format supported.\n");
 	//We need a latency in nanoseconds as a REFERENCE_TIME.  Let's go to seconds, first.
-	float latencySeconds = (float)mixAhead*inputFrames/inputSr;
+	//The +1.5 here lets us handle the zero mixahead case.
+	//+1 means at least 1 buffer, .5 gives us a little extra time so that we can fill it and makes sure that we don't round below the input frame count.
+	float latencySeconds = (float)(mixAhead+1.5)*inputFrames/inputSr;
 	printf("Latency: %f seconds\n", latencySeconds);
 	//We do this separately because if we don't the right-hand side will become too large for a float.
 	//It could be combined, but that would be uglier.
