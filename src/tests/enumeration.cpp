@@ -10,6 +10,6 @@ int main(int argc, char** args) {
 	auto i = names.begin();
 	auto j = channels.begin();
 	for(; i != names.end(); i++, j++) {
-		printf("%s (channels = %i)\n", i->c_str(), (int)(*j));
+		printf("%ls (channels = %i)\n", i->c_str(), (int)(*j));
 	}
 }

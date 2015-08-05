@@ -163,14 +163,14 @@ void WinmmOutputDevice::winmm_mixer() {
 class WinmmOutputDeviceFactory: public OutputDeviceFactoryImplementation {
 	public:
 	WinmmOutputDeviceFactory();
-	virtual std::vector<std::string> getOutputNames();
+	virtual std::vector<std::wstring> getOutputNames();
 	virtual std::vector<int> getOutputMaxChannels();
 	virtual std::shared_ptr<OutputDevice> createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, unsigned int mixAhead);
 	virtual unsigned int getOutputCount();
 	virtual bool scan();
 	std::string getName();
 	private:
-	std::vector<std::string> names;
+	std::vector<std::wstring> names;
 	std::vector<int> max_channels;
 	std::vector<unsigned int> srs; //we need this, because these are not easy to query.
 	unsigned int mapper_max_channels = 2, mapper_sr = 44100;
@@ -179,7 +179,7 @@ class WinmmOutputDeviceFactory: public OutputDeviceFactoryImplementation {
 WinmmOutputDeviceFactory::WinmmOutputDeviceFactory() {
 }
 
-std::vector<std::string> WinmmOutputDeviceFactory::getOutputNames() {
+std::vector<std::wstring> WinmmOutputDeviceFactory::getOutputNames() {
 	return names;
 }
 
@@ -237,20 +237,21 @@ WinmmCapabilities getWinmmCapabilities(UINT index) {
 }
 
 bool WinmmOutputDeviceFactory::scan() {
-	std::vector<std::string> newNames;
+	std::vector<std::wstring> newNames;
 	std::vector<int> newMaxChannels;
 	std::vector<unsigned int> newSrs; //we need this, because these are not easy to query.
 	UINT devs = waveOutGetNumDevs();
 	WinmmCapabilities caps;
 	for(UINT i = 0; i < devs; i++) {
 		caps = getWinmmCapabilities(i);
-		//todo: unicode support
 		std::string name(caps.name);
+		//Winmm makes everything ascii, so this is safe.
+		std::wstring wideName = std::wstring(name.begin(), name.end());
 		//channels.
 		unsigned int channels = caps.channels;
 		unsigned int sr = caps.sr;
 		newMaxChannels.push_back(channels);
-		newNames.push_back(name);
+		newNames.push_back(wideName);
 		newSrs.push_back(sr);
 	}
 	this->max_channels = newMaxChannels;
