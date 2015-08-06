@@ -5,6 +5,9 @@
 
 namespace audio_io {
 
+/**Note: all strings are encoded as UTF8.
+This library will decode as necessary.*/
+
 /**A physical output.*/
 class OutputDevice {
 	public:
@@ -15,7 +18,7 @@ class OutputDeviceFactory {
 	public:
 	OutputDeviceFactory() = default;
 	virtual ~OutputDeviceFactory() {}
-	virtual std::vector<std::wstring> getOutputNames() = 0;
+	virtual std::vector<std::string> getOutputNames() = 0;
 	virtual std::vector<int> getOutputMaxChannels() = 0;
 	virtual std::shared_ptr<OutputDevice> createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, unsigned int mixAhead) = 0;
 	virtual unsigned int getOutputCount() = 0;

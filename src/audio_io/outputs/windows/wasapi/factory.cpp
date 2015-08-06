@@ -21,7 +21,7 @@ WasapiOutputDeviceFactory::~WasapiOutputDeviceFactory() {
 	if(enumerator) enumerator->Release();
 }
 
-std::vector<std::wstring> WasapiOutputDeviceFactory::getOutputNames() {
+std::vector<std::string> WasapiOutputDeviceFactory::getOutputNames() {
 	return names;
 }
 
@@ -56,7 +56,6 @@ void WasapiOutputDeviceFactory::rescan() {
 	UINT count;
 	collection->GetCount(&count);
 	for(UINT i = 0; i < count; i++) {
-		std::wstring name;
 		std::wstring identifierString;
 		int channels;
 		IMMDevice *device;
@@ -75,7 +74,13 @@ void WasapiOutputDeviceFactory::rescan() {
 		CoTaskMemFree(identifier);
 		properties->GetValue(PKEY_DeviceInterface_FriendlyName, &prop);
 		LPWSTR rawname = prop.pwszVal;
-		name = std::wstring(rawname);
+		char* utf8Name;
+		int length = WideCharToMultiByte(CP_UTF8, 0, rawname, -1, NULL, 0, NULL, NULL);
+		//MSDN is unclear if we get a null, so we make sure to add one.
+		utf8Name = new char[length]();
+		length = WideCharToMultiByte(CP_UTF8, 0, rawname, -1, utf8Name, length, NULL, NULL);
+		utf8Name[length] = '\0';
+		auto name = std::string(utf8Name);
 		this->max_channels.push_back(channels);
 		names.push_back(name);
 		ids_to_id_strings[i] = identifierString;

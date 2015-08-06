@@ -39,14 +39,14 @@ class WasapiOutputDeviceFactory: public OutputDeviceFactoryImplementation {
 	public:
 	WasapiOutputDeviceFactory();
 	~WasapiOutputDeviceFactory();
-	std::vector<std::wstring> getOutputNames() override;
+	std::vector<std::string> getOutputNames() override;
 	std::vector<int> getOutputMaxChannels() override;
 	std::shared_ptr<OutputDevice> createDevice(std::function<void(float*, int)> callback, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, unsigned int mixAhead) override;
 	unsigned int getOutputCount() override;
 	std::string getName();
 	private:
 	void rescan();
-	std::vector<std::wstring> names;
+	std::vector<std::string> names;
 	std::vector<int> max_channels;
 	//Mmdevapi uses device identifier strings as opposed to integers, so we need to map.
 	std::map<int, std::wstring> ids_to_id_strings;
