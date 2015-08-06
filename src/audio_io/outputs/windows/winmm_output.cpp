@@ -163,14 +163,14 @@ void WinmmOutputDevice::winmm_mixer() {
 class WinmmOutputDeviceFactory: public OutputDeviceFactoryImplementation {
 	public:
 	WinmmOutputDeviceFactory();
-	virtual std::vector<std::wstring> getOutputNames();
+	virtual std::vector<std::string> getOutputNames();
 	virtual std::vector<int> getOutputMaxChannels();
 	virtual std::shared_ptr<OutputDevice> createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, unsigned int mixAhead);
 	virtual unsigned int getOutputCount();
 	virtual bool scan();
 	std::string getName();
 	private:
-	std::vector<std::wstring> names;
+	std::vector<std::string> names;
 	std::vector<int> max_channels;
 	std::vector<unsigned int> srs; //we need this, because these are not easy to query.
 	unsigned int mapper_max_channels = 2, mapper_sr = 44100;
@@ -179,7 +179,7 @@ class WinmmOutputDeviceFactory: public OutputDeviceFactoryImplementation {
 WinmmOutputDeviceFactory::WinmmOutputDeviceFactory() {
 }
 
-std::vector<std::wstring> WinmmOutputDeviceFactory::getOutputNames() {
+std::vector<std::string> WinmmOutputDeviceFactory::getOutputNames() {
 	return names;
 }
 
@@ -216,7 +216,20 @@ WinmmCapabilities getWinmmCapabilities(UINT index) {
 	WinmmCapabilities retval;
 	retval.sr = 44100;
 	retval.channels = 2;
+	//Winmm is old enough that it uses TChar, which changes depending on this define.
+	#ifdef UNICODE
+	auto name = std::wstring(caps.szPname);
+	//We use this function twice. First time to get the size.
+	int length = WideCharToMultiByte(CP_UTF8, 0, name.c_str(), -1, NULL, 0, NULL, NULL);
+	//It's unclear if we're responsible for reserving the null character or not, so we do it anyway for safety.
+	char* buffer = new char[length+1]();
+	WideCharToMultiByte(CP_UTF8, 0, name.c_str(), -1, buffer, length, NULL, NULL);
+	buffer[length] = '\0';
+	retval.name = std::string(buffer);
+	delete[] buffer;
+	#else
 	retval.name = std::string(caps.szPname);
+	#endif
 	unsigned int srs[] = {48000, 44100, 22050};
 	unsigned int srsCount = 3;
 	unsigned int channels[] = {8, 6, 2};
@@ -237,7 +250,7 @@ WinmmCapabilities getWinmmCapabilities(UINT index) {
 }
 
 bool WinmmOutputDeviceFactory::scan() {
-	std::vector<std::wstring> newNames;
+	std::vector<std::string> newNames;
 	std::vector<int> newMaxChannels;
 	std::vector<unsigned int> newSrs; //we need this, because these are not easy to query.
 	UINT devs = waveOutGetNumDevs();
@@ -245,13 +258,11 @@ bool WinmmOutputDeviceFactory::scan() {
 	for(UINT i = 0; i < devs; i++) {
 		caps = getWinmmCapabilities(i);
 		std::string name(caps.name);
-		//Winmm makes everything ascii, so this is safe.
-		std::wstring wideName = std::wstring(name.begin(), name.end());
 		//channels.
 		unsigned int channels = caps.channels;
 		unsigned int sr = caps.sr;
 		newMaxChannels.push_back(channels);
-		newNames.push_back(wideName);
+		newNames.push_back(name);
 		newSrs.push_back(sr);
 	}
 	this->max_channels = newMaxChannels;
