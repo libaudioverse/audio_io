@@ -29,6 +29,7 @@ void SineGen::operator()(float* block, int channels) {
 }
 
 int main(int argc, char** args) {
+	audio_io::initialize();
 	if(argc != 5) {
 		printf("Usage: output <channels> <sr> <block_size> <mixahead>\n");
 		return 0;
@@ -43,4 +44,5 @@ int main(int argc, char** args) {
 	printf("Using factory: %s\n", factory->getName().c_str());
 	auto dev = factory->createDevice(gen, -1, channels, sr, block_size, mix_ahead);
 	std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+	audio_io::shutdown();
 }

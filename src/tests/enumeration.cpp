@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 int main(int argc, char** args) {
+	audio_io::initialize();
 	auto factory = audio_io::getOutputDeviceFactory();
 	printf("Enumerating with %s factory.\n", factory->getName().c_str());
 	printf("NOTE: this test does not yet properly handle unicode.  Names may not print properly for non-Ascii devices.\n");
@@ -13,4 +14,5 @@ int main(int argc, char** args) {
 	for(; i != names.end(); i++, j++) {
 		printf("%s (channels = %i)\n", i->c_str(), (int)(*j));
 	}
+	audio_io::shutdown();
 }

@@ -20,9 +20,10 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/powercores/include")
 add_subdirectory(powercores)
 endif()
 
-SET(AUDIO_IO_NEEDED_LIBRARIES ${AUDIO_IO_NEEDED_LIBRARIES} speex_resampler_cpp)
+SET(AUDIO_IO_NEEDED_LIBRARIES ${AUDIO_IO_NEEDED_LIBRARIES} speex_resampler_cpp powercores logger_singleton)
 
 SET(AUDIO_IO_FILES
+src/audio_io/initialization.cpp
 src/audio_io/outputs/common_output.cpp
 src/audio_io/outputs/factory_creation.cpp
 src/audio_io/outputs/windows/winmm_output.cpp
@@ -44,11 +45,11 @@ if(${AUDIO_IO_BUILD_TESTS})
 add_executable(output
 src/tests/output.cpp
 )
-target_link_libraries(output audio_io)
+target_link_libraries(output audio_io ${AUDIO_IO_NEEDED_LIBRARIES})
 
 add_executable(enumeration
 src/tests/enumeration.cpp
 )
-target_link_libraries(enumeration audio_io)
+target_link_libraries(enumeration audio_io ${AUDIO_IO_NEEDED_LIBRARIES})
 
 endif()

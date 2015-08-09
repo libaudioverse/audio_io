@@ -8,6 +8,11 @@ namespace audio_io {
 /**Note: all strings are encoded as UTF8.
 This library will decode as necessary.*/
 
+/**Call initialize first; call  shutdown last.
+These are primarily for setting up logging.  The main interface of the library is through getOutputDevice factory and similar.*/
+void initialize();
+void shutdown();
+
 /**A physical output.*/
 class OutputDevice {
 	public:
@@ -27,10 +32,7 @@ class OutputDeviceFactory {
 
 std::shared_ptr<OutputDeviceFactory> getOutputDeviceFactory();
 
-/**The following functions work with mixing matrices.
-This includes applying and obtaining them.*/
-
-/**Remix a buffer:
+/**Remix a buffer.  These can be used without initialization.
 - The standard channel counts 1, 2, 6 (5.1) and 8 (7.1) are mixed between each other appropriately.
 - Otherwise, if input is mono and output is not mono, the input is copied to all channels.
 - Otherwise, we keep min(inputChannels, outputChannels) channels of audio data, and fill any remaining output channels with zero.
