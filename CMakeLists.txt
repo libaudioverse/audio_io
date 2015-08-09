@@ -12,6 +12,8 @@ endif()
 
 if(NOT ${AUDIO_IO_HANDLED_DEPENDENCIES})
 message("Building audio_io in standalone configuration.")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/logger_singleton/include")
+add_subdirectory(logger_singleton)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/speex_resampler_cpp/include")
 add_subdirectory(speex_resampler_cpp)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/powercores/include")

@@ -4,3 +4,6 @@
 [submodule "powercores"]
 	path = powercores
 	url = http://github.com/camlorn/powercores.git
+[submodule "logger_singleton"]
+	path = logger_singleton
+	url = http://github.com/camlorn/logger_singleton.git
