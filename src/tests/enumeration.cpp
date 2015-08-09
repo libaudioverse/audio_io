@@ -14,5 +14,6 @@ int main(int argc, char** args) {
 	for(; i != names.end(); i++, j++) {
 		printf("%s (channels = %i)\n", i->c_str(), (int)(*j));
 	}
+	factory.reset();
 	audio_io::shutdown();
 }

@@ -44,5 +44,8 @@ int main(int argc, char** args) {
 	printf("Using factory: %s\n", factory->getName().c_str());
 	auto dev = factory->createDevice(gen, -1, channels, sr, block_size, mix_ahead);
 	std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+	//We need to make sure the factory and the device die first.
+	dev.reset();
+	factory.reset();
 	audio_io::shutdown();
 }
