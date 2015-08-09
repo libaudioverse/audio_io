@@ -9,7 +9,10 @@ namespace audio_io {
 This library will decode as necessary.*/
 
 /**Call initialize first; call  shutdown last.
-These are primarily for setting up logging.  The main interface of the library is through getOutputDevice factory and similar.*/
+These are primarily for setting up logging.  The main interface of the library is through getOutputDevice factory and similar.
+
+Be sure that you delete all objects that you got from this library before calling shutdown.  Failure to do so will cause breakage as some destructors try to log.*/
+
 void initialize();
 void shutdown();
 
