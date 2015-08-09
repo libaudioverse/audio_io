@@ -11,32 +11,28 @@ namespace implementation {
 void upmixMonoUninterleaved(int frames, float* input, int outputChannels, float** outputs) {
 	for(int i = 0; i < frames; i++) {
 		for(int j = 0; j < outputChannels; j++) {
-			std::copy(input, input+frames, outputs[j]);
+			outputs[j][i] += input[i];
 		}
 	}
 }
 
 void upmixMonoInterleaved(int frames, float* input, int outputChannels, float* output) {
 	for(int i = 0, j = 0; i < frames; i++, j+=outputChannels) {
-		std::fill(output+j, output+j+outputChannels, input[i]);
+		for(int chan = 0; chan < outputChannels; chan++) output[j+chan]+=input[i];
 	}
 }
 
 void mixUnrecognizedUninterleaved(int frames, int inputChannels, float** inputs, int outputChannels, float** outputs) {
 	int neededChannels = std::min(inputChannels, outputChannels);
 	for(int i = 0; i < neededChannels; i++) {
-		std::copy(inputs[i], inputs[i]+frames, outputs[i]);
-	}
-	for(int i = neededChannels; i < outputChannels; i++) {
-		std::fill(outputs[i], outputs[i]+frames, 0.0f);
+		for(int frame = 0; frame < frames; frame++) outputs[i][frame] += inputs[i][frame];
 	}
 }
 
 void mixUnrecognizedInterleaved(int frames, int inputChannels, float* input, int outputChannels, float* output) {
 	int neededChannels = std::min(inputChannels, outputChannels);
 	for(int in = 0, out = 0; in < frames*inputChannels; in+=inputChannels, out += outputChannels) {
-		for(int j = 0; j < neededChannels; j++) output[out+j] = input[in+j];
-		for(int j = neededChannels; j < outputChannels; j++) output[out+j] = 0.0f;
+		for(int j = 0; j < neededChannels; j++) output[out+j] += input[in+j];
 	}
 }
 
@@ -48,7 +44,6 @@ void applyMixingMatrixUninterleaved(int frames, float** inputs, float** outputs)
 		for(int j = 0; j < inputChannels; j++) frame[j] = inputs[j][i];
 		for(int row = 0; row < outputChannels; row++) {
 			float *curRow = matrix+row*inputChannels;
-			outputs[row][i] = 0.0f; //for accumulation.
 			for(int column = 0; column < inputChannels; column++) outputs[row][i] += frame[column]*curRow[column];
 		}
 	}
@@ -61,7 +56,6 @@ void applyMixingMatrixInterleaved(int frames, float* input, float* output) {
 		std::copy(input+in, input+in+inputChannels, frame);
 		for(int row = 0; row < outputChannels; row++) {
 			float* curRow = matrix+row*inputChannels;
-			output[out+row] = 0.0f;
 			for(int column = 0; column < inputChannels; column++) output[out+row] += curRow[column]*frame[column];
 		}
 	}

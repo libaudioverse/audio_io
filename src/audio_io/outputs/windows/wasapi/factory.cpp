@@ -36,7 +36,9 @@ std::shared_ptr<OutputDevice> WasapiOutputDeviceFactory::createDevice(std::funct
 	else res = APARTMENTCALL(enumerator->GetDevice, ids_to_id_strings[index].c_str(), &dev);
 	//Proper error handling!
 	if(res != S_OK) return nullptr;
-	return std::make_shared<WasapiOutputDevice>(callback, dev, blockSize, channels, sr, mixAhead);
+	auto ret = std::make_shared<WasapiOutputDevice>(callback, dev, blockSize, channels, sr, mixAhead);
+	created_devices.push_back(ret);
+	return ret;
 }
 
 unsigned int WasapiOutputDeviceFactory::getOutputCount() {
