@@ -1,6 +1,7 @@
 #include "wasapi.hpp"
 #include <audio_io/private/audio_outputs.hpp>
 #include <audio_io/private/sample_format_converter.hpp>
+#include <logger_singleton.hpp>
 #include <thread>
 #include <atomic>
 #include <chrono>
@@ -13,6 +14,7 @@ namespace implementation {
 
 WasapiOutputDevice::WasapiOutputDevice(std::function<void(float*, int)> callback, IMMDevice* device, int inputFrames, int inputChannels, int inputSr, int mixAhead)  {
 	this->device = device;
+	logger_singleton::getLogger()->logDebug("audio_io", "Attempting to initialize a Wasapi device.");
 	//todo: this whole thing needs error handling.
 	APARTMENTCALL(device->Activate, IID_IAudioClient, CLSCTX_ALL, NULL, (void**)&client);
 	WAVEFORMATEX *format = nullptr;
@@ -71,6 +73,7 @@ WasapiOutputDevice::~WasapiOutputDevice() {
 }
 
 void WasapiOutputDevice::stop() {
+	logger_singleton::getLogger()->logDebug("audio_io", "Stopping a Wasapi device.");
 	should_continue.clear();
 	wasapi_mixing_thread.join();
 	if(client) client->Release();
@@ -79,7 +82,11 @@ void WasapiOutputDevice::stop() {
 
 void WasapiOutputDevice::wasapiMixingThreadFunction() {
 	//Stuff here can run outside the apartment.
-	CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	auto res = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	if(IS_ERROR(res)) {
+		logger_singleton::getLogger()->logDebug("audio_io", "Wassapi device mixing thread: could not initialize COM. Error %i", (int)res);
+		return; //We really can't recover from this.
+	}
 	IAudioRenderClient *renderClient = nullptr;
 	UINT32 padding, bufferSize;
 	client->GetBufferSize(&bufferSize);
@@ -94,6 +101,7 @@ void WasapiOutputDevice::wasapiMixingThreadFunction() {
 	renderClient->ReleaseBuffer(bufferSize-padding, 0);
 	//The buffer is filled, so we begin processing.
 	client->Start();
+	logger_singleton::getLogger()->logDebug("audio_io", "Wasapi mixing thread: audio client is started.  Mixing audio.");
 	//From here, it's thankfully much simpler.  Every time we have at least output_frames worth of empty buffer, we fill it.
 	while(should_continue.test_and_set()) {
 		client->GetCurrentPadding(&padding);
@@ -117,6 +125,7 @@ void WasapiOutputDevice::wasapiMixingThreadFunction() {
 	client->Reset();
 	delete[] workspace;
 	CoUninitialize();
+	logger_singleton::getLogger()->logDebug("audio_io", "Wasapi mixing thread: exiting.");
 }
 
 }
