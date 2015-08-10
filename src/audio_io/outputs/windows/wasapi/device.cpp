@@ -47,21 +47,25 @@ WasapiOutputDevice::WasapiOutputDevice(std::function<void(float*, int)> callback
 	//Todo: if the format isn't supported, error.
 	auto res = APARTMENTCALL(client->IsFormatSupported, AUDCLNT_SHAREMODE_SHARED, (WAVEFORMATEX*)&(this->format), &format);
 	//Todo: this needs to error.
-	if(res != S_OK) return;
-	printf("Format supported.\n");
+	if(res != S_OK) {
+		logger_singleton::getLogger()->logCritical("audio_io", "Wasapi device cannot initialize due to unsupported format.");
+		return;
+	}
 	//We need a latency in nanoseconds as a REFERENCE_TIME.  Let's go to seconds, first.
 	//The +1.5 here lets us handle the zero mixahead case.
 	//+1 means at least 1 buffer, .5 gives us a little extra time so that we can fill it and makes sure that we don't round below the input frame count.
 	float latencySeconds = (float)(mixAhead+1.5)*inputFrames/inputSr;
-	printf("Latency: %f seconds\n", latencySeconds);
 	//We do this separately because if we don't the right-hand side will become too large for a float.
 	//It could be combined, but that would be uglier.
 	REFERENCE_TIME latencyNanoseconds = (REFERENCE_TIME)(latencySeconds*1000);
 	latencyNanoseconds *= 1000000; //1e6 nanoseconds per second.
 	//Finally, we can make the initialize call and retrieve our actual period in nanoseconds.
 	res = APARTMENTCALL(client->Initialize, AUDCLNT_SHAREMODE_SHARED, 0, latencyNanoseconds/100, 0, (WAVEFORMATEX*)&(this->format), NULL);
-	if(res != S_OK) return;
-	printf("Initialized audio device successfully.\n");
+	if(res != S_OK) {
+		logger_singleton::getLogger()->logCritical("audio_io", "Failed to initialize the Wasapi  device. COM error %i.", (int)res);
+		return;
+	}
+	logger_singleton::getLogger()->logInfo("audio_io", "Initialized Wasapi device.  Introduced software latency: %f seconds\n", latencySeconds);
 	init(callback, inputFrames, inputChannels, inputSr, this->format.Format.nChannels, this->format.Format.nSamplesPerSec);
 	//At this point, we no longer need to go via the STA for the client interface.
 	should_continue.test_and_set();
@@ -73,6 +77,7 @@ WasapiOutputDevice::~WasapiOutputDevice() {
 }
 
 void WasapiOutputDevice::stop() {
+	logger_singleton::getLogger()->logInfo("audio_io", "Wasapi device shutting down.");
 	logger_singleton::getLogger()->logDebug("audio_io", "Stopping a Wasapi device.");
 	should_continue.clear();
 	wasapi_mixing_thread.join();
