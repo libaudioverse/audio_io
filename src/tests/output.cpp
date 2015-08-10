@@ -3,6 +3,7 @@
 #include <math.h>
 #include <thread>
 #include <chrono>
+#include <exception>
 
 #define PI 3.14159
 int channels = 2;
@@ -30,30 +31,35 @@ void SineGen::operator()(float* block, int channels) {
 }
 
 int main(int argc, char** args) {
+	try { //capture any errors.
 		//Initialize logging first, and install a callback that prints.
-	logger_singleton::initialize();
-	logger_singleton::getLogger()->setLoggingCallback([] (logger_singleton::LogMessage &msg) {
-		printf("Log: %s: %s\n", msg.topic.c_str(), msg.message.c_str());
-	});
-	logger_singleton::getLogger()->setLoggingLevel(logger_singleton::LoggingLevel::DEBUG);
-	audio_io::initialize();
-	if(argc != 5) {
-		printf("Usage: output <channels> <sr> <block_size> <mixahead>\n");
-		return 0;
+		logger_singleton::initialize();
+		logger_singleton::getLogger()->setLoggingCallback([] (logger_singleton::LogMessage &msg) {
+			printf("Log: %s: %s\n", msg.topic.c_str(), msg.message.c_str());
+		});
+		logger_singleton::getLogger()->setLoggingLevel(logger_singleton::LoggingLevel::DEBUG);
+		audio_io::initialize();
+		if(argc != 5) {
+			printf("Usage: output <channels> <sr> <block_size> <mixahead>\n");
+			return 0;
+		}
+		sscanf(args[1], "%i", &channels);
+		sscanf(args[2], "%i", &sr);
+		sscanf(args[3], "%i", &block_size);
+		sscanf(args[4], "%i", &mix_ahead);
+		printf("Playing with channels=%i, sr=%i, block_size=%i, mix_ahead=%i\n", channels, sr, block_size, mix_ahead);
+		auto gen= SineGen(300.0);
+		auto factory = audio_io::getOutputDeviceFactory();
+		printf("Using factory: %s\n", factory->getName().c_str());
+		auto dev = factory->createDevice(gen, -1, channels, sr, block_size, mix_ahead);
+		std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+		//We need to make sure the factory and the device die first.
+		dev.reset();
+		factory.reset();
+		audio_io::shutdown();
+		logger_singleton::shutdown();
 	}
-	sscanf(args[1], "%i", &channels);
-	sscanf(args[2], "%i", &sr);
-	sscanf(args[3], "%i", &block_size);
-	sscanf(args[4], "%i", &mix_ahead);
-	printf("Playing with channels=%i, sr=%i, block_size=%i, mix_ahead=%i\n", channels, sr, block_size, mix_ahead);
-	auto gen= SineGen(300.0);
-	auto factory = audio_io::getOutputDeviceFactory();
-	printf("Using factory: %s\n", factory->getName().c_str());
-	auto dev = factory->createDevice(gen, -1, channels, sr, block_size, mix_ahead);
-	std::this_thread::sleep_for(std::chrono::milliseconds(5000));
-	//We need to make sure the factory and the device die first.
-	dev.reset();
-	factory.reset();
-	audio_io::shutdown();
-	logger_singleton::shutdown();
+	catch(std::exception &e) {
+		printf("Excerption: %s", e.what());
+	}
 }

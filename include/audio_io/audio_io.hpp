@@ -2,6 +2,8 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include <exception>
+
 
 namespace audio_io {
 
