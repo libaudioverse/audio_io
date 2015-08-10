@@ -16,6 +16,27 @@ Be sure that you delete all objects that you got from this library before callin
 void initialize();
 void shutdown();
 
+/**Exceptions.*/
+
+/**This exception is thrown when we don't have any more information to give.
+
+This is regrettably a common case.  Be prepared to catch this exception and show what() to the user.
+audio_io attempts to make what() human friendly when it can.
+The more specific subclasses below catch specific errors, but platforms vary wildly as to what counts as an error condition, and sometimes things just go wrong.*/
+class AudioIOError: std::exception {
+	public:
+	AudioIOError(std::string m): message(m) {}
+	const char* what() const override { return message.c_str();}
+	private:
+	std::string message;
+};
+
+/**Generally indicates that a device was unplugged during initialization or that the system is running in i.e. Wasapi exclusive mode.*/
+class DeviceUnavailableError: public AudioIOError {
+	public:
+	DeviceUnavailableError(std::string m): AudioIOError(m) {}
+};
+
 /**A physical output.*/
 class OutputDevice {
 	public:
