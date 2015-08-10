@@ -1,4 +1,5 @@
 #include <audio_io/audio_io.hpp>
+#include <logger_singleton.hpp>
 #include <math.h>
 #include <thread>
 #include <chrono>
@@ -29,6 +30,12 @@ void SineGen::operator()(float* block, int channels) {
 }
 
 int main(int argc, char** args) {
+		//Initialize logging first, and install a callback that prints.
+	logger_singleton::initialize();
+	logger_singleton::getLogger()->setLoggingCallback([] (logger_singleton::LogMessage &msg) {
+		printf("Log: %s: %s\n", msg.topic.c_str(), msg.message.c_str());
+	});
+	logger_singleton::getLogger()->setLoggingLevel(logger_singleton::LoggingLevel::DEBUG);
 	audio_io::initialize();
 	if(argc != 5) {
 		printf("Usage: output <channels> <sr> <block_size> <mixahead>\n");
@@ -48,4 +55,5 @@ int main(int argc, char** args) {
 	dev.reset();
 	factory.reset();
 	audio_io::shutdown();
+	logger_singleton::shutdown();
 }
