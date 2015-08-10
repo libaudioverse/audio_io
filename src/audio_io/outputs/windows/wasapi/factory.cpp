@@ -3,6 +3,7 @@
 #include "wasapi.hpp"
 #include <audio_io/private/audio_outputs.hpp>
 #include <audio_io/private/single_threaded_apartment.hpp>
+#include <logger_singleton.hpp>
 #include <windows.h>
 #include <audioclient.h>
 #include <mmdeviceapi.h>
@@ -97,15 +98,20 @@ OutputDeviceFactory* createWasapiOutputDeviceFactory() {
 		IMMDevice *default_device = nullptr;
 		IAudioClient* client = nullptr;
 		auto res = sta.callInApartment(CoCreateInstance, CLSID_MMDeviceEnumerator, nullptr, CLSCTX_ALL, IID_IMMDeviceEnumerator, (void**)&enumerator);
-		if(IS_ERROR(res)) return nullptr;
+		if(IS_ERROR(res)) {
+			logger_singleton::getLogger()->logDebug("audio_io", "Couldn't create IMMDeviceEnumerator.  COM error %i", (int)res);
+			return nullptr;
+		}
 		//Attempt to get the default device.
 		res = APARTMENTCALL(enumerator->GetDefaultAudioEndpoint, eRender, eMultimedia, &default_device);
 		if(IS_ERROR(res)) {
+			logger_singleton::getLogger()->logDebug("audio_io", "Couldn't initialize IMMDevice for the default audio device.  COM error %i", (int)res);
 			enumerator->Release();
 			return nullptr;
 		}
 		res = APARTMENTCALL(default_device->Activate, IID_IAudioClient, CLSCTX_ALL, NULL, (void**)&client);
 		if(IS_ERROR(res)) {
+			logger_singleton::getLogger()->logDebug("audio_io", "Couldn't activate default Wasapi audio device. COM error %i", (int)res);
 			default_device->Release();
 			enumerator->Release();
 			return nullptr;
@@ -114,15 +120,16 @@ OutputDeviceFactory* createWasapiOutputDeviceFactory() {
 		WAVEFORMATEX *format = nullptr;
 		res = APARTMENTCALL(client->GetMixFormat, &format);
 		if(IS_ERROR(res)) {
+			logger_singleton::getLogger()->logDebug("audio_io", "Couldn't get mix format for default device.  COM error %i", (int)res);
 			client->Release();
 			default_device->Release();
 			enumerator->Release();
 			return nullptr;
 		}
-		//1e6 nanoseconds in a millisecond.
 		//We don't request a specific buffer length, we just want to know if we can open and otherwise don't care.
 		res = APARTMENTCALL(client->Initialize, AUDCLNT_SHAREMODE_SHARED, 0, 0, 0, format, NULL);
 		if(IS_ERROR(res)) {
+			logger_singleton::getLogger()->logDebug("audio_io", "Couldn't initialize default audio device. COM error %i", (int)res);
 			client->Release();
 			default_device->Release();
 			enumerator->Release();
@@ -134,6 +141,7 @@ OutputDeviceFactory* createWasapiOutputDeviceFactory() {
 		return new WasapiOutputDeviceFactory();
 	}
 	catch(...) {
+		logger_singleton::getLogger()->logDebug("audio_io", "Attempt to initialize Wasapi failed. Falling back to next preferred factory.");
 		return nullptr;
 	}
 	return nullptr;
