@@ -63,9 +63,5 @@ const IID IID_IAudioClient = __uuidof(IAudioClient);
 const IID IID_IAudioRenderClient = __uuidof(IAudioRenderClient);
 const IID IID_IAudioClock = __uuidof(IAudioClock);
 
-
-//Call the specified callable with the specified args (must be at least one)in apartment ast.
-#define APARTMENTCALL(func, ...) (sta.callInApartment([&] () {return func(__VA_ARGS__);}))
-
 }
 }

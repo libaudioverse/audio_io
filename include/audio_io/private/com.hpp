@@ -54,6 +54,10 @@ class SingleThreadedApartment {
 	DWORD apartment_thread_id;
 };
 
+//Call the specified callable with the specified args (must be at least one)in apartment ast.
+//Use this by doing SingleThreadedApartment ast, and then APARTMENTCALL(func, arg1, arg2, arg3,...argn).
+#define APARTMENTCALL(func, ...) (sta.callInApartment([&] () {return func(__VA_ARGS__);}))
+
 template<typename T>
 typename std::shared_ptr<typename T> wrapComPointer(T* what) {
 	return std::shared_ptr<typename T>(what, [](T* p) {
