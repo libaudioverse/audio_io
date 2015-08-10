@@ -6,6 +6,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <memory>
 #include <windows.h>
 #include <mmdeviceapi.h>
 #include <audioclient.h>
@@ -19,7 +20,7 @@ namespace implementation {
 
 class WasapiOutputDevice: public OutputDeviceImplementation {
 	public:
-	WasapiOutputDevice(std::function<void(float*, int)> callback, IMMDevice* device, int inputFrames, int inputChannels, int inputSr, int mixAhead);
+	WasapiOutputDevice(std::function<void(float*, int)> callback, std::shared_ptr<IMMDevice> device, int inputFrames, int inputChannels, int inputSr, int mixAhead);
 	~WasapiOutputDevice();
 	void stop() override;
 	private:
@@ -27,8 +28,8 @@ class WasapiOutputDevice: public OutputDeviceImplementation {
 	std::thread wasapi_mixing_thread;
 	std::atomic_flag should_continue;
 	SingleThreadedApartment sta; //Named so we can use APARTMENTCALL.
-	IAudioClient* client = nullptr;
-	IMMDevice* device = nullptr;
+	std::shared_ptr<IAudioClient> client;
+	std::shared_ptr<IMMDevice> device;
 	//This can be Waveformatex, but we use the larger struct because sometimes it's not.
 	WAVEFORMATEXTENSIBLE format;
 	REFERENCE_TIME period;
@@ -51,7 +52,7 @@ class WasapiOutputDeviceFactory: public OutputDeviceFactoryImplementation {
 	//Mmdevapi uses device identifier strings as opposed to integers, so we need to map.
 	std::map<int, std::wstring> ids_to_id_strings;
 	//The device enumerator, kept here so that we can avoid remaking it all the time.
-	IMMDeviceEnumerator* enumerator = nullptr;
+	std::shared_ptr<IMMDeviceEnumerator> enumerator;
 	SingleThreadedApartment sta;
 };
 

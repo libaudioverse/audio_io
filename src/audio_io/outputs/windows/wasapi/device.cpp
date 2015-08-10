@@ -12,11 +12,13 @@
 namespace audio_io {
 namespace implementation {
 
-WasapiOutputDevice::WasapiOutputDevice(std::function<void(float*, int)> callback, IMMDevice* device, int inputFrames, int inputChannels, int inputSr, int mixAhead)  {
+WasapiOutputDevice::WasapiOutputDevice(std::function<void(float*, int)> callback, std::shared_ptr<IMMDevice> device, int inputFrames, int inputChannels, int inputSr, int mixAhead)  {
 	this->device = device;
 	logger_singleton::getLogger()->logDebug("audio_io", "Attempting to initialize a Wasapi device.");
 	//todo: this whole thing needs error handling.
-	APARTMENTCALL(device->Activate, IID_IAudioClient, CLSCTX_ALL, NULL, (void**)&client);
+	IAudioClient* client_raw;
+	APARTMENTCALL(device->Activate, IID_IAudioClient, CLSCTX_ALL, NULL, (void**)&client_raw);
+	client = wrapComPointer(client_raw);
 	WAVEFORMATEX *format = nullptr;
 	APARTMENTCALL(client->GetMixFormat, &format);
 	if(format->wFormatTag == WAVE_FORMAT_EXTENSIBLE) this->format = *(WAVEFORMATEXTENSIBLE*)format;
@@ -81,8 +83,6 @@ void WasapiOutputDevice::stop() {
 	logger_singleton::getLogger()->logDebug("audio_io", "Stopping a Wasapi device.");
 	should_continue.clear();
 	wasapi_mixing_thread.join();
-	if(client) client->Release();
-	if(device) device->Release();
 }
 
 void WasapiOutputDevice::wasapiMixingThreadFunction() {
@@ -92,11 +92,12 @@ void WasapiOutputDevice::wasapiMixingThreadFunction() {
 		logger_singleton::getLogger()->logDebug("audio_io", "Wassapi device mixing thread: could not initialize COM. Error %i", (int)res);
 		return; //We really can't recover from this.
 	}
-	IAudioRenderClient *renderClient = nullptr;
+	IAudioRenderClient *renderClient_raw = nullptr;
 	UINT32 padding, bufferSize;
 	client->GetBufferSize(&bufferSize);
 	client->GetCurrentPadding(&padding);
-	client->GetService(IID_IAudioRenderClient, (void**)&renderClient);
+	client->GetService(IID_IAudioRenderClient, (void**)&renderClient_raw);
+	auto renderClient = wrapComPointer(renderClient_raw);
 	//We use double buffering, as processing can take a long time.
 	float* workspace = new float[output_channels*bufferSize]();
 	BYTE* audioBuffer;
@@ -124,8 +125,6 @@ void WasapiOutputDevice::wasapiMixingThreadFunction() {
 		memcpy(audioBuffer, workspace, sizeof(float)*output_frames*output_channels);
 		renderClient->ReleaseBuffer(output_frames, 0);
 	}
-	//Free stuff:
-	renderClient->Release();
 	client->Stop();
 	client->Reset();
 	delete[] workspace;

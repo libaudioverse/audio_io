@@ -13,13 +13,15 @@ namespace audio_io {
 namespace implementation {
 
 WasapiOutputDeviceFactory::WasapiOutputDeviceFactory() {
-	APARTMENTCALL(CoCreateInstance, CLSID_MMDeviceEnumerator, nullptr, CLSCTX_ALL, IID_IMMDeviceEnumerator, (void**)&enumerator);
+	IMMDeviceEnumerator* enumerator_raw;
+	APARTMENTCALL(CoCreateInstance, CLSID_MMDeviceEnumerator, nullptr, CLSCTX_ALL, IID_IMMDeviceEnumerator, (void**)&enumerator_raw);
+	enumerator = wrapComPointer(enumerator_raw);
 	//todo: errors.
 	rescan();
 }
 
 WasapiOutputDeviceFactory::~WasapiOutputDeviceFactory() {
-	if(enumerator) enumerator->Release();
+	//Release is handled by the smart pointers.
 }
 
 std::vector<std::string> WasapiOutputDeviceFactory::getOutputNames() {
@@ -37,7 +39,7 @@ std::shared_ptr<OutputDevice> WasapiOutputDeviceFactory::createDevice(std::funct
 	else res = APARTMENTCALL(enumerator->GetDevice, ids_to_id_strings[index].c_str(), &dev);
 	//Proper error handling!
 	if(res != S_OK) return nullptr;
-	auto ret = std::make_shared<WasapiOutputDevice>(callback, dev, blockSize, channels, sr, mixAhead);
+	auto ret = std::make_shared<WasapiOutputDevice>(callback, wrapComPointer(dev), blockSize, channels, sr, mixAhead);
 	created_devices.push_back(ret);
 	return ret;
 }
