@@ -21,7 +21,10 @@ std::shared_ptr<OutputDeviceFactory> getOutputDeviceFactory() {
 		fact = outputDeviceFactoryCreators[i].second();
 		if(fact) break;
 	}
-	if(fact == nullptr) logger_singleton::getLogger()->logCritical("audio_io", "Failed to create a device factory.  Audio output is unavailable on this system.");
+	if(fact == nullptr) {
+		logger_singleton::getLogger()->logCritical("audio_io", "Failed to create a device factory.  Audio output is unavailable on this system.");
+		throw NoBackendError();
+	}
 	return std::shared_ptr<OutputDeviceFactory>(fact);
 }
 

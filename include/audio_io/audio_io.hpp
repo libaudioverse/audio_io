@@ -39,6 +39,12 @@ class DeviceUnavailableError: public AudioIOError {
 	DeviceUnavailableError(std::string m): AudioIOError(m) {}
 };
 
+/**Thrown by getFactory if factory initialization fails.*/
+class NoBackendError: public AudioIOError {
+	public:
+	NoBackendError(): AudioIOError("No audio_io backend is available on the current system.") {}
+};
+
 /**A physical output.*/
 class OutputDevice {
 	public:

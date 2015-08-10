@@ -1,8 +1,10 @@
 #include <audio_io/audio_io.hpp>
 #include <audio_io/private/audio_outputs.hpp>
 #include <audio_io/private/sample_format_converter.hpp>
+#include <logger_singleton.hpp>
 #include <functional>
 #include <string>
+#include <sstream>
 #include <vector>
 #include <memory>
 #include <utility>
@@ -72,6 +74,11 @@ WinmmOutputDevice::WinmmOutputDevice(std::function<void(float*, int)> getBuffer,
 	winmm_headers.resize(mixAhead);
 	audio_data.resize(mixAhead);
 	buffer_state_changed_event = CreateEvent(NULL, FALSE, FALSE, NULL);
+	if(buffer_state_changed_event == NULL) {
+		std::ostringstream format;
+		format<<GetLastError();
+		throw AudioIOError(std::string("Winmm: Could not create buffer_state_changed_event.  Windows error: ")+format.str());
+	}
 	//we try all the channels until we get a device, and then bale out if we've still failed.
 	unsigned int chancounts[] = {8, 6, 2};
 	MMRESULT res = 0;
@@ -94,7 +101,7 @@ WinmmOutputDevice::WinmmOutputDevice(std::function<void(float*, int)> getBuffer,
 		//we make this back into a waveformatex and request stereo.
 		format = makeFormat(2, targetSr, false);
 		res = waveOutOpen(&winmm_handle, which, (WAVEFORMATEX*)&format, (DWORD)buffer_state_changed_event, NULL, CALLBACK_EVENT);
-		//error checking needs to go here.
+		if(res != MMSYSERR_NOERROR) throw AudioIOError("Could not open Winmm device with any attempted channel count.");
 		outChannels = 2;
 	}
 	init(getBuffer, blockSize, channels, sourceSr, outChannels, targetSr);
@@ -114,6 +121,7 @@ WinmmOutputDevice::~WinmmOutputDevice() {
 }
 
 void WinmmOutputDevice::stop() {
+	logger_singleton::getLogger()->logInfo("audio_io", "Winmm device shutting down.");
 	//Shut down the thread.
 	if(winmm_mixing_thread.joinable()) {
 		winmm_mixing_flag.clear();
@@ -123,6 +131,7 @@ void WinmmOutputDevice::stop() {
 
 void WinmmOutputDevice::winmm_mixer() {
 	float* workspace = new float[output_frames*output_channels];
+	logger_singleton::getLogger()->logDebug("audio_io", "Winmm mixing thread started.");
 	while(winmm_mixing_flag.test_and_set()) {
 		while(1) {
 			short* nextBuffer = nullptr;
@@ -158,6 +167,7 @@ void WinmmOutputDevice::winmm_mixer() {
 	}
 	waveOutClose(winmm_handle);
 	winmm_handle=nullptr;
+	logger_singleton::getLogger()->logDebug("audio_io", "Winmm mixing thread exiting normally.");
 }
 
 class WinmmOutputDeviceFactory: public OutputDeviceFactoryImplementation {

@@ -15,12 +15,19 @@ namespace implementation {
 WasapiOutputDevice::WasapiOutputDevice(std::function<void(float*, int)> callback, std::shared_ptr<IMMDevice> device, int inputFrames, int inputChannels, int inputSr, int mixAhead)  {
 	this->device = device;
 	logger_singleton::getLogger()->logDebug("audio_io", "Attempting to initialize a Wasapi device.");
-	//todo: this whole thing needs error handling.
 	IAudioClient* client_raw;
-	APARTMENTCALL(device->Activate, IID_IAudioClient, CLSCTX_ALL, NULL, (void**)&client_raw);
+	auto res = APARTMENTCALL(device->Activate, IID_IAudioClient, CLSCTX_ALL, NULL, (void**)&client_raw);
+	if(IS_ERROR(res)) {
+		logger_singleton::getLogger()->logCritical("audio_io", "Could not activate device.  Error code %i.", (int)res);
+		throw AudioIOError("Wasapi: could not activate device.");
+	}
 	client = wrapComPointer(client_raw);
 	WAVEFORMATEX *format = nullptr;
-	APARTMENTCALL(client->GetMixFormat, &format);
+	res = APARTMENTCALL(client->GetMixFormat, &format);
+	if(IS_ERROR(res)) {
+		logger_singleton::getLogger()->logCritical("aaudio_io", "Wasapi: could not get mix format. Error: %i", (int)res);
+		throw AudioIOError("Wasapi: unable to retrieve mix format.");
+	}
 	if(format->wFormatTag == WAVE_FORMAT_EXTENSIBLE) this->format = *(WAVEFORMATEXTENSIBLE*)format;
 	else this->format.Format = *format;
 	CoTaskMemFree(format);
@@ -46,12 +53,10 @@ WasapiOutputDevice::WasapiOutputDevice(std::function<void(float*, int)> callback
 		else if(f.nChannels == 8) f2.dwChannelMask = SPEAKER_FRONT_LEFT|SPEAKER_FRONT_RIGHT|SPEAKER_FRONT_CENTER|SPEAKER_LOW_FREQUENCY|SPEAKER_BACK_LEFT|SPEAKER_BACK_RIGHT|SPEAKER_SIDE_LEFT|SPEAKER_SIDE_RIGHT;
 		else f2.dwChannelMask = (1<<f.nChannels)-1; //At least have enough channels, even if they aren't the right ones.
 	}
-	//Todo: if the format isn't supported, error.
-	auto res = APARTMENTCALL(client->IsFormatSupported, AUDCLNT_SHAREMODE_SHARED, (WAVEFORMATEX*)&(this->format), &format);
-	//Todo: this needs to error.
-	if(res != S_OK) {
-		logger_singleton::getLogger()->logCritical("audio_io", "Wasapi device cannot initialize due to unsupported format.");
-		return;
+	res = APARTMENTCALL(client->IsFormatSupported, AUDCLNT_SHAREMODE_SHARED, (WAVEFORMATEX*)&(this->format), &format);
+	if(IS_ERROR(res)) {
+		logger_singleton::getLogger()->logCritical("audio_io", "Requested mix format is not supported.  Attrempt to use IEEE float failed. Error: %i", (int)res);
+		throw AudioIOError("Wasapi: could not initialize with float audio..");
 	}
 	//We need a latency in nanoseconds as a REFERENCE_TIME.  Let's go to seconds, first.
 	//The +1.5 here lets us handle the zero mixahead case.
@@ -64,8 +69,8 @@ WasapiOutputDevice::WasapiOutputDevice(std::function<void(float*, int)> callback
 	//Finally, we can make the initialize call and retrieve our actual period in nanoseconds.
 	res = APARTMENTCALL(client->Initialize, AUDCLNT_SHAREMODE_SHARED, 0, latencyNanoseconds/100, 0, (WAVEFORMATEX*)&(this->format), NULL);
 	if(res != S_OK) {
-		logger_singleton::getLogger()->logCritical("audio_io", "Failed to initialize the Wasapi  device. COM error %i.", (int)res);
-		return;
+		logger_singleton::getLogger()->logCritical("audio_io", "Call to IAudioClient::initialize failed. COM error %i.", (int)res);
+		throw AudioIOError("Wasapi: call to IAudioClient::initialize failed.");
 	}
 	logger_singleton::getLogger()->logInfo("audio_io", "Initialized Wasapi device.  Introduced software latency: %f seconds\n", latencySeconds);
 	init(callback, inputFrames, inputChannels, inputSr, this->format.Format.nChannels, this->format.Format.nSamplesPerSec);
