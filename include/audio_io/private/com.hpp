@@ -4,10 +4,15 @@
 #include <type_traits>
 #include <atomic>
 #include <functional>
+#include <memory>
 #include <windows.h>
 
 namespace audio_io {
 namespace implementation {
+
+/**This file contains a bunch of helper functions and macros and such for COM on windows.
+
+We want to avoid a dependency on the ATL (introduces some dlls before vs2015) if possible, so we duplicate some functionality.*/
 
 /**A single-threaded apartment (as pertaining to Microsoft COM) consists of a message loop and COM initialization.
 
@@ -48,6 +53,13 @@ class SingleThreadedApartment {
 	std::thread apartment_thread;
 	DWORD apartment_thread_id;
 };
+
+template<typename T>
+typename std::shared_ptr<typename T> wrapComPointer(T* what) {
+	return std::shared_ptr<typename T>(what, [](T* p) {
+		p->Release();
+	});
+}
 
 }
 }

@@ -1,7 +1,7 @@
 /**This header is out-of-line because it is needed by the exactly two files in this directory.*/
 #pragma once
 #include <audio_io/private/audio_outputs.hpp>
-#include <audio_io/private/single_threaded_apartment.hpp>
+#include <audio_io/private/com.hpp>
 #include <mutex>
 #include <vector>
 #include <map>

@@ -1,4 +1,4 @@
-#include <audio_io/private/single_threaded_apartment.hpp>
+#include <audio_io/private/com.hpp>
 #include <powercores/utilities.hpp>
 #include <thread>
 #include <atomic>
