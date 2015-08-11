@@ -7,9 +7,10 @@
 
 #define PI 3.14159
 int channels = 2;
-int mix_ahead = 0;
 int sr = 44100;
 int block_size = 1024;
+float min_latency, start_latency, max_latency;
+
 
 class SineGen {
 	public:
@@ -39,19 +40,22 @@ int main(int argc, char** args) {
 		});
 		logger_singleton::getLogger()->setLoggingLevel(logger_singleton::LoggingLevel::DEBUG);
 		audio_io::initialize();
-		if(argc != 5) {
-			printf("Usage: output <channels> <sr> <block_size> <mixahead>\n");
+		if(argc != 7) {
+			printf("Usage: output <channels> <sr> <block_size> <minLatency> <startLatency> <maxLatency>\n");
 			return 0;
 		}
 		sscanf(args[1], "%i", &channels);
 		sscanf(args[2], "%i", &sr);
 		sscanf(args[3], "%i", &block_size);
-		sscanf(args[4], "%i", &mix_ahead);
-		printf("Playing with channels=%i, sr=%i, block_size=%i, mix_ahead=%i\n", channels, sr, block_size, mix_ahead);
+		sscanf(args[4], "%f", &min_latency);
+		sscanf(args[5], "%f", &start_latency);
+		sscanf(args[6], "%f", &max_latency);
+		printf("Playing with channels=%i, sr=%i, block_size=%i, min_latency=%f, start_latency=%f, max_latency=%f\n",
+		channels, sr, block_size, min_latency, start_latency, max_latency);
 		auto gen= SineGen(300.0);
 		auto factory = audio_io::getOutputDeviceFactory();
 		printf("Using factory: %s\n", factory->getName().c_str());
-		auto dev = factory->createDevice(gen, -1, channels, sr, block_size, mix_ahead);
+		auto dev = factory->createDevice(gen, -1, channels, sr, block_size, min_latency, start_latency, max_latency);
 		std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 		//We need to make sure the factory and the device die first.
 		dev.reset();
