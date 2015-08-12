@@ -80,7 +80,7 @@ class WinmmOutputDevice: public  OutputDeviceImplementation {
 };
 
 WinmmOutputDevice::WinmmOutputDevice(std::function<void(float*, int)> getBuffer, unsigned int blockSize, unsigned int channels, unsigned int maxChannels,  UINT_PTR which, unsigned int sourceSr, unsigned int targetSr, float minLatency, float startLatency, float maxLatency):
-latency_predictor(10, std::max<double>(winmm_min_latency, minLatency), startLatency, std::min<double>(winmm_max_latency, maxLatency)) {
+latency_predictor(30, std::max<double>(winmm_min_latency, minLatency), startLatency, std::min<double>(winmm_max_latency, maxLatency)) {
 	WAVEFORMATEXTENSIBLE format = {0};
 	buffer_state_changed_event = CreateEvent(NULL, FALSE, FALSE, NULL);
 	if(buffer_state_changed_event == NULL) {

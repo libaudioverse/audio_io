@@ -84,7 +84,7 @@ WasapiOutputDevice::WasapiOutputDevice(std::function<void(float*, int)> callback
 	//Clamp starting latency.
 	startLatency = std::min(std::max(startLatency, minLatency), maxLatency);
 	logger_singleton::getLogger()->logDebug("audio_io", "minLatency=%f, startLatency=%f, maxLatency=%f, bufferSize=%i, output_sr=%i", minLatency, startLatency, maxLatency, (int)bufferSize, outputSr);
-	latency_predictor = new LatencyPredictor(10, minLatency, startLatency, maxLatency);
+	latency_predictor = new LatencyPredictor(30, minLatency, startLatency, maxLatency);
 	init(callback, inputFrames, inputChannels, inputSr, this->format.Format.nChannels, outputSr);
 	//At this point, we no longer need to go via the STA for the client interface.
 	should_continue.test_and_set();
