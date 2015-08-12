@@ -6,6 +6,8 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <queue>
+#include <tuple>
 #include <memory>
 #include <utility>
 #include <mutex>
@@ -66,16 +68,14 @@ class WinmmOutputDevice: public  OutputDeviceImplementation {
 	HWAVEOUT winmm_handle;
 	HANDLE buffer_state_changed_event;
 	std::thread winmm_mixing_thread;
-	std::vector<WAVEHDR> winmm_headers;
-	std::vector<short*> audio_data;
+	//Used to let us remember which buffer is last, etc.
+	std::queue<std::tuple<WAVEHDR*, short*>> winmm_buffer_queue;
 	std::atomic_flag winmm_mixing_flag;
 };
 
 WinmmOutputDevice::WinmmOutputDevice(std::function<void(float*, int)> getBuffer, unsigned int blockSize, unsigned int channels, unsigned int maxChannels, unsigned int mixAhead, UINT_PTR which, unsigned int sourceSr, unsigned int targetSr) {
 	WAVEFORMATEXTENSIBLE format = {0};
 	mixAhead += 1;
-	winmm_headers.resize(mixAhead);
-	audio_data.resize(mixAhead);
 	buffer_state_changed_event = CreateEvent(NULL, FALSE, FALSE, NULL);
 	if(buffer_state_changed_event == NULL) {
 		std::ostringstream format;
@@ -108,12 +108,14 @@ WinmmOutputDevice::WinmmOutputDevice(std::function<void(float*, int)> getBuffer,
 		outChannels = 2;
 	}
 	init(getBuffer, blockSize, channels, sourceSr, outChannels, targetSr);
-	for(unsigned int i = 0; i < audio_data.size(); i++) audio_data[i] = new short[winmm_buffer_frames*output_channels];
-	//we can go ahead and set up the headers.
-	for(unsigned int i = 0; i < winmm_headers.size(); i++) {
-		winmm_headers[i].lpData = (LPSTR)audio_data[i];
-		winmm_headers[i].dwBufferLength = sizeof(short)*winmm_buffer_frames*output_channels;
-		winmm_headers[i].dwFlags = WHDR_DONE;
+	for(unsigned int i = 0; i < mixAhead; i++) {
+		auto buffer = new short[winmm_buffer_frames*output_channels];
+		WAVEHDR *header = new WAVEHDR();
+		header->lpData = (LPSTR)buffer;
+		header->dwBufferLength = sizeof(short)*winmm_buffer_frames*output_channels;
+		//Act as though we've already enqueued the buffer. This helps simplify the mixing thread.
+		header->dwFlags = WHDR_DONE;
+		winmm_buffer_queue.emplace(header, buffer);
 	}
 	winmm_mixing_flag.test_and_set();
 	winmm_mixing_thread = std::thread([this]() {winmm_mixer();});
@@ -136,17 +138,12 @@ void WinmmOutputDevice::winmm_mixer() {
 	float* workspace = new float[winmm_buffer_frames*output_channels];
 	logger_singleton::getLogger()->logDebug("audio_io", "Winmm mixing thread started.");
 	while(winmm_mixing_flag.test_and_set()) {
-		while(1) {
-			short* nextBuffer = nullptr;
-			WAVEHDR* nextHeader = nullptr;
-			for(unsigned int i = 0; i < winmm_headers.size(); i++) {
-				if(winmm_headers[i].dwFlags & WHDR_DONE) {
-					nextBuffer = audio_data[i];
-					nextHeader = &winmm_headers[i];
-					break;
-				}
-			}
-			if(nextHeader == nullptr || nextBuffer == nullptr) break;
+		short* nextBuffer = nullptr;
+		WAVEHDR* nextHeader = nullptr;
+		std::tie(nextHeader, nextBuffer) = winmm_buffer_queue.front();
+		//WHDR_DONE is set by the constructor for simplicity.
+		if(nextHeader->dwFlags & WHDR_DONE) {
+			winmm_buffer_queue.pop();
 			sample_format_converter->write(winmm_buffer_frames, workspace);
 			waveOutUnprepareHeader(winmm_handle, nextHeader, sizeof(WAVEHDR));
 			for(unsigned int i = 0; i < winmm_buffer_frames*output_channels; i++) nextBuffer[i] = (short)(workspace[i]*32767);
@@ -155,18 +152,25 @@ void WinmmOutputDevice::winmm_mixer() {
 			nextHeader->lpData = (LPSTR)nextBuffer;
 			waveOutPrepareHeader(winmm_handle, nextHeader, sizeof(WAVEHDR));
 			waveOutWrite(winmm_handle, nextHeader, sizeof(WAVEHDR));
+			winmm_buffer_queue.emplace(nextHeader, nextBuffer);
 		}
 		WaitForSingleObject(buffer_state_changed_event, 5); //the timeout is to let us detect that we've been requested to die.
 	}
 	//we prepared these, we need to also kill them.  If we don't, very very bad things happen.
 	//This call ends playback.
 	waveOutReset(winmm_handle);
-	for(auto i= winmm_headers.begin(); i != winmm_headers.end(); i++) {
-		auto *header = &*i;
-		while((header->dwFlags & WHDR_DONE) == 0) {
+	while(winmm_buffer_queue.size()) {
+		WAVEHDR *header;
+		short *buffer;
+		std::tie(header, buffer) = winmm_buffer_queue.front();
+		winmm_buffer_queue.pop();
+		//While the buffer is not done and it is enqueued or prepared.
+		while((header->dwFlags & WHDR_DONE) == 0 && header->dwFlags & (WHDR_PREPARED||WHDR_INQUEUE)) {
 			std::this_thread::yield();
 		}
 		waveOutUnprepareHeader(winmm_handle, header, sizeof(WAVEHDR));
+		delete header;
+		delete[] buffer;
 	}
 	waveOutClose(winmm_handle);
 	winmm_handle=nullptr;
