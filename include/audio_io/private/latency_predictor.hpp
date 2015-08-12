@@ -6,6 +6,8 @@ namespace implementation {
 class LatencyPredictor {
 	public:
 	LatencyPredictor(int historyLength, double startLatency, double minAllowedLatency, double maxAllowedLatency);
+	LatencyPredictor(const LatencyPredictor& other) = delete;
+	LatencyPredictor& operator=(const LatencyPredictor& other) = delete;
 	LatencyPredictor(int historyLength, float startLatency, float minAllowedLatency, float maxAllowedLatency);
 	~LatencyPredictor();
 	//Call before processing a chunk of audio.
