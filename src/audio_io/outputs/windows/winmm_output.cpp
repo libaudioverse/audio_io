@@ -21,6 +21,9 @@
 namespace audio_io {
 namespace implementation {
 
+/**This is the size of the winmm buffers in frames.*/
+const int winmm_buffer_frames = 1024;
+
 WAVEFORMATEXTENSIBLE makeFormat(unsigned int channels, unsigned int sr, bool isExtended) {
 	//lookup table so we can easily pull out masks.
 	unsigned int chanmasks[] = {
@@ -105,11 +108,11 @@ WinmmOutputDevice::WinmmOutputDevice(std::function<void(float*, int)> getBuffer,
 		outChannels = 2;
 	}
 	init(getBuffer, blockSize, channels, sourceSr, outChannels, targetSr);
-	for(unsigned int i = 0; i < audio_data.size(); i++) audio_data[i] = new short[output_frames*output_channels];
+	for(unsigned int i = 0; i < audio_data.size(); i++) audio_data[i] = new short[winmm_buffer_frames*output_channels];
 	//we can go ahead and set up the headers.
 	for(unsigned int i = 0; i < winmm_headers.size(); i++) {
 		winmm_headers[i].lpData = (LPSTR)audio_data[i];
-		winmm_headers[i].dwBufferLength = sizeof(short)*output_frames*output_channels;
+		winmm_headers[i].dwBufferLength = sizeof(short)*winmm_buffer_frames*output_channels;
 		winmm_headers[i].dwFlags = WHDR_DONE;
 	}
 	winmm_mixing_flag.test_and_set();
@@ -130,7 +133,7 @@ void WinmmOutputDevice::stop() {
 }
 
 void WinmmOutputDevice::winmm_mixer() {
-	float* workspace = new float[output_frames*output_channels];
+	float* workspace = new float[winmm_buffer_frames*output_channels];
 	logger_singleton::getLogger()->logDebug("audio_io", "Winmm mixing thread started.");
 	while(winmm_mixing_flag.test_and_set()) {
 		while(1) {
@@ -144,11 +147,11 @@ void WinmmOutputDevice::winmm_mixer() {
 				}
 			}
 			if(nextHeader == nullptr || nextBuffer == nullptr) break;
-			sample_format_converter->write(output_frames, workspace);
+			sample_format_converter->write(winmm_buffer_frames, workspace);
 			waveOutUnprepareHeader(winmm_handle, nextHeader, sizeof(WAVEHDR));
-			for(unsigned int i = 0; i < output_frames*output_channels; i++) nextBuffer[i] = (short)(workspace[i]*32767);
+			for(unsigned int i = 0; i < winmm_buffer_frames*output_channels; i++) nextBuffer[i] = (short)(workspace[i]*32767);
 			nextHeader->dwFlags = 0;
-			nextHeader->dwBufferLength = sizeof(short)*output_frames*output_channels;
+			nextHeader->dwBufferLength = sizeof(short)*winmm_buffer_frames*output_channels;
 			nextHeader->lpData = (LPSTR)nextBuffer;
 			waveOutPrepareHeader(winmm_handle, nextHeader, sizeof(WAVEHDR));
 			waveOutWrite(winmm_handle, nextHeader, sizeof(WAVEHDR));
@@ -199,7 +202,7 @@ std::vector<int> WinmmOutputDeviceFactory::getOutputMaxChannels() {
 
 std::shared_ptr<OutputDevice> WinmmOutputDeviceFactory::createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, float minLatency, float startLatency, float maxLatency) {
 	unsigned int mixAhead = 0;
-	while(mixAhead*blockSize/(float)sr <= startLatency) mixAhead += 1;
+	while(mixAhead*winmm_buffer_frames/(float)sr <= startLatency) mixAhead += 1;
 	std::shared_ptr<OutputDeviceImplementation> device = std::make_shared<WinmmOutputDevice>(getBuffer, blockSize, channels, index != -1 ? max_channels[index] : mapper_max_channels, mixAhead, index == -1 ? WAVE_MAPPER : index, sr, index == -1 ? mapper_sr : srs[index]);
 	created_devices.push_back(device);
 	return device;
