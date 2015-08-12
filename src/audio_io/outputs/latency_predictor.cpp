@@ -6,7 +6,7 @@
 namespace audio_io {
 namespace implementation {
 
-LatencyPredictor::LatencyPredictor(int historyLength, double startLatency, double minAllowedLatency, double maxAllowedLatency):
+LatencyPredictor::LatencyPredictor(int historyLength, double minAllowedLatency, double startLatency, double maxAllowedLatency):
 history_length(historyLength), min_allowed_latency(minAllowedLatency), max_allowed_latency(maxAllowedLatency) {
 	history = new double[historyLength];
 	std::fill(history, history+historyLength, startLatency);
