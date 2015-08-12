@@ -9,7 +9,7 @@ namespace audio_io {
 
 const std::pair<const char*, const implementation::OutputDeviceFactoryCreationFunction> outputDeviceFactoryCreators[] = {
 	#ifdef AUDIO_IO_WINDOWS_BACKENDS
-	//{"Wasapi", implementation::createWasapiOutputDeviceFactory},
+	{"Wasapi", implementation::createWasapiOutputDeviceFactory},
 	{"winmm", implementation::createWinmmOutputDeviceFactory},
 	#endif
 };
