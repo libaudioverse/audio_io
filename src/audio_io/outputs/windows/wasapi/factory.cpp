@@ -33,15 +33,13 @@ std::vector<int> WasapiOutputDeviceFactory::getOutputMaxChannels() {
 }
 
 std::shared_ptr<OutputDevice> WasapiOutputDeviceFactory::createDevice(std::function<void(float*, int)> callback, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, float minLatency, float startLatency, float maxLatency) {
-	unsigned int mixAhead = 0;
-	while(blockSize*mixAhead/(float)sr <= startLatency) mixAhead += 1;
 	HRESULT res;
 	IMMDevice* dev;
 	if(index == -1) res = APARTMENTCALL(enumerator->GetDefaultAudioEndpoint, eRender, eMultimedia, &dev);
 	else res = APARTMENTCALL(enumerator->GetDevice, ids_to_id_strings[index].c_str(), &dev);
 	//Proper error handling!
 	if(res != S_OK) return nullptr;
-	auto ret = std::make_shared<WasapiOutputDevice>(callback, wrapComPointer(dev), blockSize, channels, sr, mixAhead);
+	auto ret = std::make_shared<WasapiOutputDevice>(callback, wrapComPointer(dev), blockSize, channels, sr, minLatency, startLatency, maxLatency);
 	created_devices.push_back(ret);
 	return ret;
 }

@@ -1,6 +1,9 @@
+//Turn off windows.h #defines for min and max.
+#define NOMINMAX
 #include "wasapi.hpp"
 #include <audio_io/private/audio_outputs.hpp>
 #include <audio_io/private/sample_format_converter.hpp>
+#include <audio_io/private/latency_predictor.hpp>
 #include <logger_singleton.hpp>
 #include <thread>
 #include <atomic>
@@ -12,7 +15,10 @@
 namespace audio_io {
 namespace implementation {
 
-WasapiOutputDevice::WasapiOutputDevice(std::function<void(float*, int)> callback, std::shared_ptr<IMMDevice> device, int inputFrames, int inputChannels, int inputSr, int mixAhead)  {
+/**Number of samples to write at once.*/
+const int wasapi_chunk_length = 512;
+
+WasapiOutputDevice::WasapiOutputDevice(std::function<void(float*, int)> callback, std::shared_ptr<IMMDevice> device, int inputFrames, int inputChannels, int inputSr, double minLatency, double startLatency, double maxLatency)  {
 	this->device = device;
 	logger_singleton::getLogger()->logDebug("audio_io", "Attempting to initialize a Wasapi device.");
 	IAudioClient* client_raw;
@@ -58,29 +64,37 @@ WasapiOutputDevice::WasapiOutputDevice(std::function<void(float*, int)> callback
 		logger_singleton::getLogger()->logCritical("audio_io", "Requested mix format is not supported.  Attrempt to use IEEE float failed. Error: %i", (int)res);
 		throw AudioIOError("Wasapi: could not initialize with float audio..");
 	}
-	//We need a latency in nanoseconds as a REFERENCE_TIME.  Let's go to seconds, first.
-	//The +1.5 here lets us handle the zero mixahead case.
-	//+1 means at least 1 buffer, .5 gives us a little extra time so that we can fill it and makes sure that we don't round below the input frame count.
-	float latencySeconds = (float)(mixAhead+1.5)*inputFrames/inputSr;
-	//We do this separately because if we don't the right-hand side will become too large for a float.
-	//It could be combined, but that would be uglier.
-	REFERENCE_TIME latencyNanoseconds = (REFERENCE_TIME)(latencySeconds*1000);
-	latencyNanoseconds *= 1000000; //1e6 nanoseconds per second.
-	//Finally, we can make the initialize call and retrieve our actual period in nanoseconds.
+	//We ask for 100 MS of latency to play with.
+	REFERENCE_TIME latencyNanoseconds = 100000000;
 	res = APARTMENTCALL(client->Initialize, AUDCLNT_SHAREMODE_SHARED, 0, latencyNanoseconds/100, 0, (WAVEFORMATEX*)&(this->format), NULL);
 	if(res != S_OK) {
 		logger_singleton::getLogger()->logCritical("audio_io", "Call to IAudioClient::initialize failed. COM error %i.", (int)res);
 		throw AudioIOError("Wasapi: call to IAudioClient::initialize failed.");
 	}
-	logger_singleton::getLogger()->logInfo("audio_io", "Initialized Wasapi device.  Introduced software latency: %f seconds\n", latencySeconds);
-	init(callback, inputFrames, inputChannels, inputSr, this->format.Format.nChannels, this->format.Format.nSamplesPerSec);
+	//Get the buffer size and use it to make the predictor.
+	UINT32 bufferSize;
+	res = APARTMENTCALL(client->GetBufferSize, &bufferSize);
+	if(IS_ERROR(res)) {
+		logger_singleton::getLogger()->logCritical("audio_io", "Attempt to get buffer size failed with error %i", (int)res);
+		throw AudioIOError("Couldn't get Wasapi buffer size.");
+	}
+	int outputSr = this->format.Format.nSamplesPerSec;
+	if(minLatency < wasapi_chunk_length/(float)outputSr) minLatency = wasapi_chunk_length/(float)outputSr;
+	if(maxLatency > bufferSize/(float)outputSr) maxLatency = bufferSize/(float)outputSr;
+	//Clamp starting latency.
+	startLatency = std::min(std::max(startLatency, minLatency), maxLatency);
+	logger_singleton::getLogger()->logDebug("audio_io", "minLatency=%f, startLatency=%f, maxLatency=%f, bufferSize=%i, output_sr=%i", minLatency, startLatency, maxLatency, (int)bufferSize, outputSr);
+	latency_predictor = new LatencyPredictor(10, minLatency, startLatency, maxLatency);
+	init(callback, inputFrames, inputChannels, inputSr, this->format.Format.nChannels, outputSr);
 	//At this point, we no longer need to go via the STA for the client interface.
 	should_continue.test_and_set();
 	wasapi_mixing_thread = std::thread(&WasapiOutputDevice::wasapiMixingThreadFunction, this);
+	logger_singleton::getLogger()->logDebug("audio_io", "Initialized Wasapi device.");
 }
 
 WasapiOutputDevice::~WasapiOutputDevice() {
 	stop();
+	delete latency_predictor;
 }
 
 void WasapiOutputDevice::stop() {
@@ -104,6 +118,7 @@ void WasapiOutputDevice::wasapiMixingThreadFunction() {
 	client->GetService(IID_IAudioRenderClient, (void**)&renderClient_raw);
 	auto renderClient = wrapComPointer(renderClient_raw);
 	//We use double buffering, as processing can take a long time.
+	//MSDN warns us not to not do intensive processing between GetBuffer and ReleaseBuffer.
 	float* workspace = new float[output_channels*bufferSize]();
 	BYTE* audioBuffer;
 	sample_format_converter->write(bufferSize-padding, workspace);
@@ -114,21 +129,32 @@ void WasapiOutputDevice::wasapiMixingThreadFunction() {
 	client->Start();
 	logger_singleton::getLogger()->logDebug("audio_io", "Wasapi mixing thread: audio client is started.  Mixing audio.");
 	//From here, it's thankfully much simpler.  Every time we have at least output_frames worth of empty buffer, we fill it.
+	bool workspaceContainsChunk = false;
 	while(should_continue.test_and_set()) {
+		//Get the number of frames we want before continuing.
+		double targetLatency = latency_predictor->predictLatency();
+		int targetLatencyFrames = (int)(output_sr*targetLatency);
+		//We do this to make sure that we always write something.
+		//Predicted latency can go too high for us to write a  chunk.
+		int targetPadding = std::min(bufferSize-wasapi_chunk_length, bufferSize-targetLatencyFrames);
 		client->GetCurrentPadding(&padding);
-		UINT32 available = bufferSize-padding;
 		//Wait until we have enough data.
-		if(available < output_frames) {
-			std::this_thread::sleep_for(std::chrono::milliseconds((output_frames-available)*1000/output_sr));
+		if(padding > targetPadding) {
+			std::this_thread::sleep_for(std::chrono::milliseconds((padding-targetPadding)*1000/output_sr));
 			continue;
 		}
-		sample_format_converter->write(output_frames, workspace);
-		if(renderClient->GetBuffer(available, &audioBuffer) != S_OK) {
+		latency_predictor->beginPass();
+		if(workspaceContainsChunk == false) sample_format_converter->write(wasapi_chunk_length, workspace);
+		workspaceContainsChunk = true;
+		if(renderClient->GetBuffer(wasapi_chunk_length, &audioBuffer) != S_OK) {
+			latency_predictor->endPass();
 			std::this_thread::yield();
 			continue;
 		}
-		memcpy(audioBuffer, workspace, sizeof(float)*output_frames*output_channels);
-		renderClient->ReleaseBuffer(output_frames, 0);
+		memcpy(audioBuffer, workspace, sizeof(float)*wasapi_chunk_length*output_channels);
+		renderClient->ReleaseBuffer(wasapi_chunk_length, 0);
+		workspaceContainsChunk = false;
+		latency_predictor->endPass();
 	}
 	client->Stop();
 	client->Reset();

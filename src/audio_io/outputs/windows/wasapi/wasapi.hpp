@@ -1,5 +1,7 @@
 /**This header is out-of-line because it is needed by the exactly two files in this directory.*/
 #pragma once
+//Removes windows min and max macros.'
+#define NOMINMAX
 #include <audio_io/private/audio_outputs.hpp>
 #include <audio_io/private/com.hpp>
 #include <mutex>
@@ -18,9 +20,11 @@ class OutputDevice;
 
 namespace implementation {
 
+class LatencyPredictor;
+
 class WasapiOutputDevice: public OutputDeviceImplementation {
 	public:
-	WasapiOutputDevice(std::function<void(float*, int)> callback, std::shared_ptr<IMMDevice> device, int inputFrames, int inputChannels, int inputSr, int mixAhead);
+	WasapiOutputDevice(std::function<void(float*, int)> callback, std::shared_ptr<IMMDevice> device, int inputFrames, int inputChannels, int inputSr, double minLatency, double startLatency, double maxLatency);
 	~WasapiOutputDevice();
 	void stop() override;
 	private:
@@ -33,6 +37,8 @@ class WasapiOutputDevice: public OutputDeviceImplementation {
 	//This can be Waveformatex, but we use the larger struct because sometimes it's not.
 	WAVEFORMATEXTENSIBLE format;
 	REFERENCE_TIME period;
+	//We can't know ahead of time what the minimum latency we can deal with is, so we need to dynamically allocate the predictor.
+	LatencyPredictor* latency_predictor = nullptr;
 	//The rest of the variables live in the mixing thread.
 };
 
