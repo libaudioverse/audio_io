@@ -57,7 +57,11 @@ class OutputDeviceFactory {
 	virtual ~OutputDeviceFactory() {}
 	virtual std::vector<std::string> getOutputNames() = 0;
 	virtual std::vector<int> getOutputMaxChannels() = 0;
-	virtual std::shared_ptr<OutputDevice> createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, unsigned int mixAhead) = 0;
+	/**Get a device.
+	minLatency is the minimum allowed latency. startLatency is the latency at which the device starts.
+	maxLatency is the maximum allowed latency.
+	audio_io does not guarantee that these will be respected.  They are hints.*/
+	virtual std::shared_ptr<OutputDevice> createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, float minLatency, float startLatency, float maxLatency) = 0;
 	virtual unsigned int getOutputCount() = 0;
 	virtual std::string getName() = 0;
 };

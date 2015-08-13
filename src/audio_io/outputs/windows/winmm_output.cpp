@@ -173,12 +173,12 @@ void WinmmOutputDevice::winmm_mixer() {
 class WinmmOutputDeviceFactory: public OutputDeviceFactoryImplementation {
 	public:
 	WinmmOutputDeviceFactory();
-	virtual std::vector<std::string> getOutputNames();
-	virtual std::vector<int> getOutputMaxChannels();
-	virtual std::shared_ptr<OutputDevice> createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, unsigned int mixAhead);
-	virtual unsigned int getOutputCount();
+	virtual std::vector<std::string> getOutputNames() override;
+	virtual std::vector<int> getOutputMaxChannels() override;
+	virtual std::shared_ptr<OutputDevice> createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, float minLatency, float startLatency, float maxLatency) override;
+	virtual unsigned int getOutputCount() override;
 	virtual bool scan();
-	std::string getName();
+	std::string getName() override;
 	private:
 	std::vector<std::string> names;
 	std::vector<int> max_channels;
@@ -197,9 +197,9 @@ std::vector<int> WinmmOutputDeviceFactory::getOutputMaxChannels() {
 	return max_channels;
 }
 
-std::shared_ptr<OutputDevice> WinmmOutputDeviceFactory::createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, unsigned int mixAhead) {
-	//first, we need to do sanity checks.
-	//error checking.
+std::shared_ptr<OutputDevice> WinmmOutputDeviceFactory::createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, float minLatency, float startLatency, float maxLatency) {
+	unsigned int mixAhead = 0;
+	while(mixAhead*blockSize/(float)sr <= startLatency) mixAhead += 1;
 	std::shared_ptr<OutputDeviceImplementation> device = std::make_shared<WinmmOutputDevice>(getBuffer, blockSize, channels, index != -1 ? max_channels[index] : mapper_max_channels, mixAhead, index == -1 ? WAVE_MAPPER : index, sr, index == -1 ? mapper_sr : srs[index]);
 	created_devices.push_back(device);
 	return device;
