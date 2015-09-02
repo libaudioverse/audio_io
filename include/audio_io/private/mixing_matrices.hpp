@@ -12,19 +12,28 @@ float* pointer;
 extern MixingMatrixInfo mixing_matrix_list[];
 
 extern float mixing_matrix_1_2[];
+extern float mixing_matrix_1_4[];
 extern float mixing_matrix_1_6[];
 extern float mixing_matrix_1_8[];
 
 extern float mixing_matrix_2_1[];
+extern float mixing_matrix_2_4[];
 extern float mixing_matrix_2_6[];
 extern float mixing_matrix_2_8[];
 
+extern float mixing_matrix_4_1[];
+extern float mixing_matrix_4_2[];
+extern float mixing_matrix_4_6[];
+extern float mixing_matrix_4_8[];
+
 extern float mixing_matrix_6_1[];
 extern float mixing_matrix_6_2[];
+extern float mixing_matrix_6_4[];
 extern float mixing_matrix_6_8[];
 
 extern float mixing_matrix_8_1[];
 extern float mixing_matrix_8_2[];
+extern float mixing_matrix_8_4[];
 extern float mixing_matrix_8_6[];
 
 }

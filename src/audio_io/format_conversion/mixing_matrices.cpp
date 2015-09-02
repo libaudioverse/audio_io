@@ -21,24 +21,40 @@ The matrices here are based on the WebAudio spec, save for those to do with 7.1 
 
 //this is the registry. The matrices are below.
 MixingMatrixInfo mixing_matrix_list[] = {
-{1, 2, mixing_matrix_1_2},
-{1, 6, mixing_matrix_1_6},
-{1, 8, mixing_matrix_1_8},
-{2, 1, mixing_matrix_2_1},
-{2, 6, mixing_matrix_2_6},
-{2, 8, mixing_matrix_2_8},
-{6, 1, mixing_matrix_6_1},
-{6, 2, mixing_matrix_6_2},
-{6, 8, mixing_matrix_6_8},
-{8, 1, mixing_matrix_8_1},
-{8, 2, mixing_matrix_8_2},
-{8, 6, mixing_matrix_8_6},
+	{1, 2, mixing_matrix_1_2},
+	{1, 4, mixing_matrix_1_4},
+	{1, 6, mixing_matrix_1_6},
+	{1, 8, mixing_matrix_1_8},
+	{2, 1, mixing_matrix_2_1},
+	{2, 4, mixing_matrix_2_4},
+	{2, 6, mixing_matrix_2_6},
+	{2, 8, mixing_matrix_2_8},
+	{4, 1, mixing_matrix_4_1},
+	{4, 2, mixing_matrix_4_2},
+	{4, 6, mixing_matrix_4_6},
+	{4, 8, mixing_matrix_4_8},
+	{6, 1, mixing_matrix_6_1},
+	{6, 2, mixing_matrix_6_2},
+	{6, 4, mixing_matrix_6_4},
+	{6, 8, mixing_matrix_6_8},
+	{8, 1, mixing_matrix_8_1},
+	{8, 2, mixing_matrix_8_2},
+	{8, 4, mixing_matrix_8_4},
+	{8, 6, mixing_matrix_8_6},
 {0, 0, nullptr},
 };
 
 float mixing_matrix_1_2[] = {
 1.0f,
 1.0f,
+};
+
+//Mono goes to the two front channels.
+float mixing_matrix_1_4[] = {
+	1.0,
+	1.0,
+	0.0,
+	0.0
 };
 
 //fl, fr, fc, lfe, bl, br
@@ -69,6 +85,14 @@ float mixing_matrix_2_1[] = {
 0.5, 0.5
 };
 
+//Copy stereo channels to front left and right.
+float mixing_matrix_2_4[] = {
+	1.0f, 0.0f,
+	0.0f, 1.0f,
+	0.0f, 0.0f,
+	0.0f, 0.0f,
+};
+
 //fl, fr, fc, lfe, bl, br
 float mixing_matrix_2_6[] = {
 1.0f, 0.0f, //left to front left
@@ -90,6 +114,35 @@ float mixing_matrix_2_8[] = {
 0.0f, 0.0f,
 };
 
+float mixing_matrix_4_1[] {
+	0.25f, 0.25f, 0.25f, 0.25f,
+};
+
+float mixing_matrix_4_2[] {
+	0.5f, 0.0f, 0.5f, 0.0f,
+	0.0f, 0.5f, 0.0f, 0.5f,
+};
+
+float mixing_matrix_4_6[] {
+	1.0f, 0.0f, 0.0f, 0.0f,
+	0.0f, 1.0f, 0.0f, 0.0f,
+	0.0f, 0.0f, 0.0f, 0.0f,
+	0.0f, 0.0f, 0.0f, 0.0f,
+	0.0f, 0.0f, 1.0f, 0.0f,
+	0.0f, 0.0f, 0.0f, 1.0f,
+};
+
+float mixing_matrix_4_8[] {
+	1.0f, 0.0f, 0.0f, 0.0f,
+	0.0f, 1.0f, 0.0f, 0.0f,
+	0.0f, 0.0f, 0.0f, 0.0f,
+	0.0f, 0.0f, 0.0f, 0.0f,
+	0.0f, 0.0f, 0.7071f, 0.0f,
+	0.0f, 0.0f, 0.0f, 0.7071f,
+	0.0f, 0.0f, 0.7071f, 0.0f,
+	0.0f, 0.0f, 0.0f, 0.7071f,
+};
+
 //These numbers taken from webaudio spec.
 //output = 0.7071 * (input.L + input.R) + input.C + 0.5 * (input.SL + input.SR)
 float mixing_matrix_6_1[] = {
@@ -103,6 +156,13 @@ output.R = R + 0.7071 * (input.C + input.SR)
 float mixing_matrix_6_2[] = {
 1.0, 0.0, 0.7071, 0.0, 0.7071, 0.0,
 0.0, 1.0, 0.7071, 0.0, 0.0, 0.7071,
+};
+
+float mixing_matrix_6_4[] {
+	1.0f, 0.0f, 0.7071f, 0.0f, 0.0f, 0.0f,
+	0.0f, 1.0f, 0.7071f, 0.0f, 0.0f, 0.0f,
+	0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+	0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
 };
 
 float mixing_matrix_6_8[] = {
@@ -128,6 +188,13 @@ float mixing_matrix_8_1[] = {
 float mixing_matrix_8_2[] = {
 1.0, 0.0, 0.7071, 0.0, 0.7071/2, 0.0, 0.7071/2, 0.0,
 0.0, 1.0, 0.7071, 0.0, 0.0, 0.7071/2, 0.0, 0.7071/2,
+};
+
+float mixing_matrix_8_4[] {
+	1.0f, 0.0f, 0.7071f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+	0.0f, 1.0f, 0.7071f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+	0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.5f, 0.0f,
+	0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.5f,
 };
 
 float mixing_matrix_8_6[] = {
