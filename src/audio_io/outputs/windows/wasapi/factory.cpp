@@ -14,9 +14,12 @@ namespace implementation {
 
 WasapiOutputDeviceFactory::WasapiOutputDeviceFactory() {
 	IMMDeviceEnumerator* enumerator_raw;
-	APARTMENTCALL(CoCreateInstance, CLSID_MMDeviceEnumerator, nullptr, CLSCTX_ALL, IID_IMMDeviceEnumerator, (void**)&enumerator_raw);
+	auto res = APARTMENTCALL(CoCreateInstance, CLSID_MMDeviceEnumerator, nullptr, CLSCTX_ALL, IID_IMMDeviceEnumerator, (void**)&enumerator_raw);
+	if(IS_ERROR(res)) {
+		logger_singleton::getLogger()->logCritical("audio_io", "Could not create device enumerator in factory constructor. Error %i\n", res);
+		throw AudioIOError("Could not create Wasapi device enumerator");
+	}
 	enumerator = wrapComPointer(enumerator_raw);
-	//todo: errors.
 	rescan();
 }
 
@@ -37,8 +40,10 @@ std::shared_ptr<OutputDevice> WasapiOutputDeviceFactory::createDevice(std::funct
 	IMMDevice* dev;
 	if(index == -1) res = APARTMENTCALL(enumerator->GetDefaultAudioEndpoint, eRender, eMultimedia, &dev);
 	else res = APARTMENTCALL(enumerator->GetDevice, ids_to_id_strings[index].c_str(), &dev);
-	//Proper error handling!
-	if(res != S_OK) return nullptr;
+	if(IS_ERROR(res)) {
+		logger_singleton::getLogger()->logCritical("audio_io", "Could not create IMMDevice instance.  COM error %i", res);
+		throw AudioIOError("Could not create IMMDeviceInstance");
+	}
 	auto ret = std::make_shared<WasapiOutputDevice>(callback, wrapComPointer(dev), blockSize, channels, sr, minLatency, startLatency, maxLatency);
 	created_devices.push_back(ret);
 	return ret;
@@ -56,28 +61,59 @@ void WasapiOutputDeviceFactory::rescan() {
 	names.clear();
 	max_channels.clear();
 	ids_to_id_strings.clear();
-	IMMDeviceCollection *collection;
-	enumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &collection);
+	IMMDeviceCollection *collection_raw;
+	auto res = enumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &collection_raw);
+	if(IS_ERROR(res)) {
+		logger_singleton::getLogger()->logCritical("audio_io", "Failed to get IMMDeviceCollection.  COM error %i", res);
+		throw AudioIOError("Could not create IMMDeviceCollection.");
+	}
+	auto collection = wrapComPointer(collection_raw);
 	UINT count;
-	collection->GetCount(&count);
+	res = collection->GetCount(&count);
+	if(IS_ERROR(res)) {
+		logger_singleton::getLogger()->logCritical("audio_io", "Failure to retrieve device count. Error %i", res);
+		throw AudioIOError("Could not determine device count.");
+	}
 	for(UINT i = 0; i < count; i++) {
 		std::wstring identifierString;
 		int channels;
-		IMMDevice *device;
-		collection->Item(i, &device);
+		IMMDevice *device_raw = nullptr;
+		res = collection->Item(i, &device_raw);
+		if(IS_ERROR(res)) {
+			logger_singleton::getLogger()->logCritical("audio_io", "Couldn't obtain device info for device %i.  Error %i", i, res);
+			throw AudioIOError("Failure to retrieve device information.");
+		}
+		auto device = wrapComPointer(device_raw);
 		//We have to open the property store and use it to get the informationh.
-		IPropertyStore *properties;
-		device->OpenPropertyStore(STGM_READ, &properties);
+		IPropertyStore *properties_raw = nullptr;
+		res = device->OpenPropertyStore(STGM_READ, &properties_raw);
+		if(IS_ERROR(res)) {
+			logger_singleton::getLogger()->logCritical("audio_io", "Couldn't open property store for device %i. Error %i", i, res);
+			throw AudioIOError("Cannot open property store.");
+		}
+		auto properties = wrapComPointer(properties_raw);
 		PROPVARIANT prop;
-		properties->GetValue(PKEY_AudioEngine_DeviceFormat, &prop);
+		res = properties->GetValue(PKEY_AudioEngine_DeviceFormat, &prop);
+		if(IS_ERROR(res)) {
+			logger_singleton::getLogger()->logCritical("audio_io", "Could not obtain device format for device %i. Error: %i", i, res);
+			throw AudioIOError("Couldn't get device format.");
+		}
 		WAVEFORMATEX *format = (WAVEFORMATEX*)prop.blob.pBlobData;
 		channels = format->nChannels;
 		//Easy string is the identifier.
 		LPWSTR identifier;
-		device->GetId(&identifier);
+		res = device->GetId(&identifier);
+		if(IS_ERROR(res)) {
+			logger_singleton::getLogger()->logCritical("audio_io", "Could not retreive identifier for device %i. Error %i", i, res);
+			throw AudioIOError("Failure to retrieve device identifier");
+		}
 		identifierString = std::wstring(identifier);
 		CoTaskMemFree(identifier);
-		properties->GetValue(PKEY_DeviceInterface_FriendlyName, &prop);
+		res = properties->GetValue(PKEY_DeviceInterface_FriendlyName, &prop);
+		if(IS_ERROR(res)) {
+			logger_singleton::getLogger()->logCritical("audio_io", "Failure to obtain friendly name for device %i.  Error %i", i, res);
+			throw AudioIOError("Couldn't get friendly name");
+		}
 		LPWSTR rawname = prop.pwszVal;
 		char* utf8Name;
 		int length = WideCharToMultiByte(CP_UTF8, 0, rawname, -1, NULL, 0, NULL, NULL);

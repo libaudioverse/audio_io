@@ -31,7 +31,7 @@ WasapiOutputDevice::WasapiOutputDevice(std::function<void(float*, int)> callback
 	WAVEFORMATEX *format = nullptr;
 	res = APARTMENTCALL(client->GetMixFormat, &format);
 	if(IS_ERROR(res)) {
-		logger_singleton::getLogger()->logCritical("aaudio_io", "Wasapi: could not get mix format. Error: %i", (int)res);
+		logger_singleton::getLogger()->logCritical("audio_io", "Wasapi: could not get mix format. Error: %i", (int)res);
 		throw AudioIOError("Wasapi: unable to retrieve mix format.");
 	}
 	if(format->wFormatTag == WAVE_FORMAT_EXTENSIBLE) this->format = *(WAVEFORMATEXTENSIBLE*)format;
@@ -61,7 +61,7 @@ WasapiOutputDevice::WasapiOutputDevice(std::function<void(float*, int)> callback
 	}
 	res = APARTMENTCALL(client->IsFormatSupported, AUDCLNT_SHAREMODE_SHARED, (WAVEFORMATEX*)&(this->format), &format);
 	if(IS_ERROR(res)) {
-		logger_singleton::getLogger()->logCritical("audio_io", "Requested mix format is not supported.  Attrempt to use IEEE float failed. Error: %i", (int)res);
+		logger_singleton::getLogger()->logCritical("audio_io", "Requested mix format is not supported.  Attempt to use IEEE float failed. Error: %i", (int)res);
 		throw AudioIOError("Wasapi: could not initialize with float audio..");
 	}
 	//We ask for 100 MS of latency to play with.
