@@ -21,7 +21,7 @@ const int wasapi_chunk_length = 512;
 WasapiOutputDevice::WasapiOutputDevice(std::function<void(float*, int)> callback, std::shared_ptr<IMMDevice> device, int inputFrames, int inputChannels, int inputSr, double minLatency, double startLatency, double maxLatency)  {
 	this->device = device;
 	logger_singleton::getLogger()->logDebug("audio_io", "Attempting to initialize a Wasapi device.");
-	IAudioClient* client_raw;
+	IAudioClient* client_raw = nullptr;
 	auto res = APARTMENTCALL(device->Activate, IID_IAudioClient, CLSCTX_ALL, NULL, (void**)&client_raw);
 	if(IS_ERROR(res)) {
 		logger_singleton::getLogger()->logCritical("audio_io", "Could not activate device.  Error code %i.", (int)res);
@@ -120,7 +120,7 @@ void WasapiOutputDevice::wasapiMixingThreadFunction() {
 	//We use double buffering, as processing can take a long time.
 	//MSDN warns us not to not do intensive processing between GetBuffer and ReleaseBuffer.
 	float* workspace = new float[output_channels*bufferSize]();
-	BYTE* audioBuffer;
+	BYTE* audioBuffer = nullptr;
 	sample_format_converter->write(bufferSize-padding, workspace);
 	renderClient->GetBuffer(bufferSize-padding, &audioBuffer);
 	memcpy(audioBuffer, workspace, sizeof(float)*output_channels*(bufferSize-padding));

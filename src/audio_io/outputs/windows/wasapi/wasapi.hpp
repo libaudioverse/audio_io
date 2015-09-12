@@ -36,7 +36,7 @@ class WasapiOutputDevice: public OutputDeviceImplementation {
 	std::shared_ptr<IMMDevice> device;
 	//This can be Waveformatex, but we use the larger struct because sometimes it's not.
 	WAVEFORMATEXTENSIBLE format;
-	REFERENCE_TIME period;
+	REFERENCE_TIME period = 0;
 	//We can't know ahead of time what the minimum latency we can deal with is, so we need to dynamically allocate the predictor.
 	LatencyPredictor* latency_predictor = nullptr;
 	//The rest of the variables live in the mixing thread.
