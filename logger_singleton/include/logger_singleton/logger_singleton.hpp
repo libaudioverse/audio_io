@@ -82,6 +82,9 @@ class Logger {
 	void setLoggingLevel(LoggingLevel level);
 	LoggingLevel getLoggingLevel();
 	void setLoggingCallback(std::function<void(LogMessage&)> cb);
+	//Configure the callback to forward to another logger.
+	//This will keep the other logger alive until this logger dies.
+	void setAsForwarder(std::shared_ptr<Logger> to);
 	private:
 	Logger();
 	void loggingThreadFunction();

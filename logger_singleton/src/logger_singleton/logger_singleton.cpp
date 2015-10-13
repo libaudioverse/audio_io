@@ -62,6 +62,12 @@ void Logger::setLoggingCallback(std::function<void(LogMessage&)> cb) {
 	mutex.unlock();
 }
 
+void Logger::setAsForwarder(std::shared_ptr<Logger> to) {
+	setLoggingCallback([=](LogMessage& m) {
+		to->submitMessage(m.level, m.topic, m.message);
+	});
+}
+
 void Logger::loggingThreadFunction() {
 	while(true) { //Infinite because we need to check running inside the mutex.
 		std::unique_lock<std::mutex> l(mutex);
