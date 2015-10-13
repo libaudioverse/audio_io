@@ -4,7 +4,7 @@
 namespace audio_io {
 
 void initialize() {
-	implementation::initializeLogger();
+	//Logging uses once_flag.
 }
 
 void shutdown() {

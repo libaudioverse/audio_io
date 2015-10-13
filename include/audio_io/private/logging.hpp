@@ -5,7 +5,7 @@
 namespace audio_io {
 namespace implementation {
 
-void initializeLogger();
+//Initialization is implicit via once_flag.
 void shutdownLogger();
 
 //The following need this extern declaration, it's not intended that code will use it directly.
