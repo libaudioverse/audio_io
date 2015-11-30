@@ -21,6 +21,7 @@ class OutputDeviceImplementation: public OutputDevice {
 	int output_frames;
 	std::shared_ptr<SampleFormatConverter> sample_format_converter;
 	std::function<void(float*, int)> callback;
+	bool stopped = false; //Used by subclasses.
 	friend class OutputDeviceFactoryImplementation;
 };
 
