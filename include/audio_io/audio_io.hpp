@@ -69,14 +69,17 @@ class OutputDeviceFactory {
 	minLatency is the minimum allowed latency. startLatency is the latency at which the device starts.
 	maxLatency is the maximum allowed latency.
 	audio_io does not guarantee that these will be respected.  They are hints.*/
-	virtual std::shared_ptr<OutputDevice> createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, float minLatency, float startLatency, float maxLatency) = 0;
+	virtual std::unique_ptr<OutputDevice> createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, float minLatency, float startLatency, float maxLatency) = 0;
 	virtual unsigned int getOutputCount() = 0;
 	virtual std::string getName() = 0;
 };
 
-std::shared_ptr<OutputDeviceFactory> getOutputDeviceFactory();
+std::unique_ptr<OutputDeviceFactory> getOutputDeviceFactory();
 
-/**Remix a buffer.  These can be used without initialization.
+/**NOTE: the following functions are scheduled to be removed from this library, pending me writing another piece of infrastructure.
+They remain here for now for compatibility with other components of my stack.
+
+Remix a buffer.  These can be used without initialization.
 - The standard channel counts 1, 2, 6 (5.1) and 8 (7.1) are mixed between each other appropriately.
 - Otherwise, if input is mono and output is not mono, the input is copied to all channels.
 - Otherwise, we keep min(inputChannels, outputChannels) channels of audio data, and fill any remaining output channels with zero.

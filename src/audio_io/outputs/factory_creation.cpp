@@ -14,7 +14,7 @@ const std::pair<const char*, const implementation::OutputDeviceFactoryCreationFu
 	#endif
 };
 
-std::shared_ptr<OutputDeviceFactory> getOutputDeviceFactory() {
+std::unique_ptr<OutputDeviceFactory> getOutputDeviceFactory() {
 	OutputDeviceFactory* fact=nullptr;
 	for(int i=0; i < sizeof(outputDeviceFactoryCreators)/sizeof(outputDeviceFactoryCreators[0]); i++) {
 		implementation::logInfo("Attempting to use device factory %s.", outputDeviceFactoryCreators[i].first);
@@ -25,7 +25,7 @@ std::shared_ptr<OutputDeviceFactory> getOutputDeviceFactory() {
 		implementation::logCritical("Failed to create a device factory.  Audio output is unavailable on this system.");
 		throw NoBackendError();
 	}
-	return std::shared_ptr<OutputDeviceFactory>(fact);
+	return std::unique_ptr<OutputDeviceFactory>(fact);
 }
 
 }

@@ -11,9 +11,10 @@ namespace implementation {
 class SampleFormatConverter;
 
 class OutputDeviceImplementation: public OutputDevice {
+	public:
+	virtual ~OutputDeviceImplementation();
 	protected:
 	OutputDeviceImplementation() = default;
-	virtual ~OutputDeviceImplementation();
 	//Callback parameters: output buffer, number of channels to write.
 	virtual void init(std::function<void(float*, int)> callback, int inputFrames, int inputChannels, int inputSr, int outputChannels, int outputSr);
 	int input_frames, input_channels, input_sr, output_channels, output_sr;
