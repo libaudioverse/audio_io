@@ -33,7 +33,7 @@ The more specific subclasses below catch specific errors, but platforms vary wil
 class AudioIOError: std::exception {
 	public:
 	AudioIOError(std::string m): message(m) {}
-	const char* what() const override { return message.c_str();}
+	const char* what() const noexcept override { return message.c_str();}
 	private:
 	std::string message;
 };

@@ -14,6 +14,9 @@ const std::pair<const char*, const implementation::OutputDeviceFactoryCreationFu
 	#ifdef AUDIO_IO_USE_WINMM
 	{"winmm", implementation::createWinmmOutputDeviceFactory},
 	#endif
+	#ifdef AUDIO_IO_USE_ALSA
+	{"alsa", implementation::createAlsaOutputDeviceFactory},
+	#endif
 };
 
 std::unique_ptr<OutputDeviceFactory> getOutputDeviceFactory() {

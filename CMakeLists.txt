@@ -5,6 +5,10 @@ project(audio_io)
 OPTION(AUDIO_IO_BUILD_TESTS "Whether to build tests from audio_io" ON)
 OPTION(AUDIO_IO_HANDLED_DEPENDENCIES "Whether or not a parent script handles our dependencies.  Don't touch this, it's for Libaudioverse." OFF)
 
+if(CMAKE_COMPILER_IS_GNUC OR CMAKE_COMPILER_IS_GNUCXX)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+endif()
+
 include(cmake_backend_handler.txt)
 
 if(NOT ${AUDIO_IO_HANDLED_DEPENDENCIES})
