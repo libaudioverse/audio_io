@@ -9,6 +9,7 @@ namespace implementation {
 
 class AlsaOutputDeviceFactory: public OutputDeviceFactoryImplementation {
 	public:
+	AlsaOutputDeviceFactory();
 	std::string getName() override;
 	std::vector<std::string> getOutputNames() override;
 	std::vector<int> getOutputMaxChannels() override;
