@@ -3,9 +3,10 @@
 #include <audio_io/private/audio_outputs.hpp>
 #include <string>
 #include <vector>
-#include <alsa/asoundlib.h>
+#include <memory>
 #include <string.h>
 #include <stdlib.h>
+#include <alsa/asoundlib.h>
 
 namespace audio_io {
 namespace implementation {
@@ -27,11 +28,14 @@ std::vector<int> AlsaOutputDeviceFactory::getOutputMaxChannels() {
 }
 
 std::unique_ptr<OutputDevice> AlsaOutputDeviceFactory::createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, float minLatency, float startLatency, float maxLatency) {
-	return nullptr;
+	std::string n;
+	if(index == -1) n = "default";
+	else n = device_names[index];
+	return std::unique_ptr<OutputDevice>(new AlsaOutputDevice(getBuffer, n, sr, channels, blockSize, minLatency, startLatency, maxLatency));
 }
 
 void AlsaOutputDeviceFactory::rescan() {
-	device_names.clear();
+	device_names.clear();	
 	device_channels.clear();
 	//In the following, we always assume that the device supports 8 channels.
 	//Todo: can we get more info out of Alsa somehow?

@@ -3,9 +3,20 @@
 #include <audio_io/private/audio_outputs.hpp>
 #include <string>
 #include <vector>
+#include <functional>
+#include <alsa/asoundlib.h>
 
 namespace audio_io {
 namespace implementation {
+
+class AlsaOutputDevice: public OutputDeviceImplementation {
+	public:
+	AlsaOutputDevice(std::function<void(float*, int)> callback, std::string name, int sr, int channels, int blockSize, float minLatency, float startLatency, float maxLatency);
+	void stop();
+	private:
+	void workerThreadFunction();
+	std::string alsa_name;
+};
 
 class AlsaOutputDeviceFactory: public OutputDeviceFactoryImplementation {
 	public:
