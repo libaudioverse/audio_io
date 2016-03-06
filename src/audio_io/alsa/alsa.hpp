@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <thread>
+#include <atomic>
 #include <alsa/asoundlib.h>
 
 namespace audio_io {
@@ -12,10 +14,14 @@ namespace implementation {
 class AlsaOutputDevice: public OutputDeviceImplementation {
 	public:
 	AlsaOutputDevice(std::function<void(float*, int)> callback, std::string name, int sr, int channels, int blockSize, float minLatency, float startLatency, float maxLatency);
+	~AlsaOutputDevice();
 	void stop();
 	private:
 	void workerThreadFunction();
-	std::string alsa_name;
+	std::thread worker_thread;
+	std::atomic_flag worker_running;
+	std::string device_name;
+	snd_pcm_t *device_handle = nullptr;
 };
 
 class AlsaOutputDeviceFactory: public OutputDeviceFactoryImplementation {
