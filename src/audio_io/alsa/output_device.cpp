@@ -80,6 +80,8 @@ void AlsaOutputDevice::workerThreadFunction() {
 			snd_pcm_prepare(device_handle);
 		}
 	}
+	snd_pcm_drain(device_handle);
+	snd_pcm_close(device_handle);
 }
 
 }
