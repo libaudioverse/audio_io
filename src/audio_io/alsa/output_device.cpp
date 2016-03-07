@@ -7,6 +7,7 @@
 #include <functional>
 #include <thread>
 #include <atomic>
+#include <algorithm>
 #include <alsa/asoundlib.h>
 
 namespace audio_io {
@@ -42,8 +43,17 @@ AlsaOutputDevice::AlsaOutputDevice(std::function<void(float*, int)> callback, st
 	if(res < 0) {
 		throw AudioIOError("ALSA: couldn't set access.");
 	}
-	//compute needed buffer size.
+	//Use 10 milliseconds (1 ms = 1000 us).
+	//No app is likely to go below this, nor should we.
+	unsigned int alsaPeriodMicrosecs = 10000;
+	res = snd_pcm_hw_params_set_period_time_near(device_handle, params, &alsaPeriodMicrosecs, 0);
+	if(res < 0) {
+		throw AudioIOError("ALSA: couldn't configure period time.");
+	}
+	//compute needed buffer size and bump maxLatency if needed.
+	maxLatency = std::max<double>(maxLatency, 2.3*blockSize/(double)sr);
 	snd_pcm_uframes_t alsaBufferSize = alsaSr*maxLatency;
+	
 	res = snd_pcm_hw_params_set_buffer_size_near(device_handle, params, &alsaBufferSize);
 	if(res < 0) {
 		throw AudioIOError("ALSA: couldn't set buffer size.");
@@ -72,7 +82,7 @@ void AlsaOutputDevice::stop() {
 }
 
 void AlsaOutputDevice::workerThreadFunction() {
-	float* buffer = new float[output_channels*output_frames];
+	float* buffer = new float[output_channels*output_frames]();
 	while(worker_running.test_and_set()) {
 		sample_format_converter->write(output_frames, buffer);
 		snd_pcm_sframes_t res = snd_pcm_writei(device_handle, buffer, (snd_pcm_uframes_t)output_frames);
@@ -82,6 +92,7 @@ void AlsaOutputDevice::workerThreadFunction() {
 	}
 	snd_pcm_drain(device_handle);
 	snd_pcm_close(device_handle);
+	delete[] buffer;
 }
 
 }
