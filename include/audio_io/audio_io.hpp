@@ -30,7 +30,7 @@ std::shared_ptr<logger_singleton::Logger> getLogger();
 This is regrettably a common case.  Be prepared to catch this exception and show what() to the user.
 audio_io attempts to make what() human friendly when it can.
 The more specific subclasses below catch specific errors, but platforms vary wildly as to what counts as an error condition, and sometimes things just go wrong.*/
-class AudioIOError: std::exception {
+class AudioIOError: public std::exception {
 	public:
 	AudioIOError(std::string m): message(m) {}
 	const char* what() const noexcept override { return message.c_str();}
