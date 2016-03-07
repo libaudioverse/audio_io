@@ -15,7 +15,9 @@ namespace implementation {
 
 AlsaOutputDevice::AlsaOutputDevice(std::function<void(float*, int)> callback, std::string name, int sr, int channels, int blockSize, float minLatency, float startLatency, float maxLatency) {
 	snd_pcm_hw_params_t *params;
+	snd_pcm_sw_params_t *params_sw;
 	snd_pcm_hw_params_alloca(&params);
+	snd_pcm_sw_params_alloca(&params_sw);
 	int res = snd_pcm_open(&device_handle, name.c_str(), SND_PCM_STREAM_PLAYBACK, 0);
 	if(res) {
 		throw AudioIOError("An Alsa Error occurred.");
@@ -53,7 +55,6 @@ AlsaOutputDevice::AlsaOutputDevice(std::function<void(float*, int)> callback, st
 	//compute needed buffer size and bump maxLatency if needed.
 	maxLatency = std::max<double>(maxLatency, 2.3*blockSize/(double)sr);
 	snd_pcm_uframes_t alsaBufferSize = alsaSr*maxLatency;
-	
 	res = snd_pcm_hw_params_set_buffer_size_near(device_handle, params, &alsaBufferSize);
 	if(res < 0) {
 		throw AudioIOError("ALSA: couldn't set buffer size.");
@@ -61,6 +62,20 @@ AlsaOutputDevice::AlsaOutputDevice(std::function<void(float*, int)> callback, st
 	res = snd_pcm_hw_params(device_handle, params);
 	if(res < 0) {
 		throw AudioIOError("ALSA: Could not prepare device.");
+	}
+	//Software parameter setup.
+	res = snd_pcm_sw_params_current(device_handle, params_sw);
+	if(res < 0) {
+		throw AudioIOError("ALSA: couldn't get current software parameters.");
+	}
+	//Start the device when the buffer is 90% full.
+	res = snd_pcm_sw_params_set_start_threshold(device_handle, params_sw, (snd_pcm_uframes_t)(0.9*alsaBufferSize));
+	if(res < 0) {
+		throw AudioIOError("ALSA: couldn't set startup threshold.");
+	}
+	res = snd_pcm_sw_params(device_handle, params_sw);
+	if(res < 0) {
+		throw AudioIOError("ALSA: couldn't install software params.");
 	}
 	init(callback, blockSize, channels, sr, (int)alsaChannels, (int)alsaSr);
 	worker_running.test_and_set();
