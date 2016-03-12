@@ -100,6 +100,17 @@ void AlsaOutputDevice::workerThreadFunction() {
 	float* buffer = new float[output_channels*output_frames]();
 	while(worker_running.test_and_set()) {
 		sample_format_converter->write(output_frames, buffer);
+		//If we're 5.1 or 7.1, we need to swap the channels around to match Linux's idea of surround sound.
+		//The stuff herer comes from http://drona.csa.iisc.ernet.in/~uday/alsamch.shtml
+		//If this doesn't work, there is an ALSA channel mapping API.
+		if(output_channels == 6 || output_channels == 8) {
+			const int initial_center = 2, initial_lfe = 3;
+			const int new_center = output_channels-2, new_lfe = output_channels-1;
+			for(int i = 0; i < output_frames*output_channels; i+= output_channels) {
+				std::swap(buffer[i+initial_center], buffer[i+new_center]);
+				std::swap(buffer[i+initial_lfe], buffer[i+new_lfe]);
+			}
+		}
 		snd_pcm_sframes_t res = snd_pcm_writei(device_handle, buffer, (snd_pcm_uframes_t)output_frames);
 		if(res < 0) {
 			snd_pcm_prepare(device_handle);
