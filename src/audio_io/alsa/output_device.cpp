@@ -104,9 +104,12 @@ AlsaOutputDevice::AlsaOutputDevice(std::function<void(float*, int)> callback, st
 		throw AudioIOError("ALSA: couldn't install software params.");
 	}
 	latency_predictor = new LatencyPredictor(30, minLatency, startLatency, maxLatency);
+	//Keep this block.  It's very useful to be able to uncomment it for debugging.
+	/*
 	snd_output_t *output = nullptr;
 	snd_output_stdio_attach(&output, stdout, 0);
 	snd_pcm_dump(device_handle, output);
+	*/
 	init(callback, blockSize, channels, sr, (int)alsaChannels, (int)alsaSr);
 	worker_running.test_and_set();
 	worker_thread = std::thread([&] () {workerThreadFunction();});
