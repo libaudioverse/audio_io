@@ -137,11 +137,13 @@ void AlsaOutputDevice::workerThreadFunction() {
 	while(worker_running.test_and_set()) {
 		double targetLatency = latency_predictor->predictLatency();
 		bool forceWrite = false;
+		bool hadUnderrun = false;
 		auto avail = snd_pcm_avail(device_handle);
 		if(avail < 0) {
 			auto res = snd_pcm_recover(device_handle, avail, 1);
 			if(avail == -EPIPE) {
 				forceWrite = true;
+				latency_predictor->hadUnderrun();
 				continue;
 			}
 			retries++;
@@ -176,6 +178,7 @@ void AlsaOutputDevice::workerThreadFunction() {
 				snd_pcm_sframes_t res = snd_pcm_writei(device_handle, buffer+handled*output_channels, (snd_pcm_uframes_t)(output_frames-handled));
 				if(res == -EAGAIN) continue;
 				if(res < 0) {
+					if(res == -EPIPE) hadUnderrun = true;
 					res = snd_pcm_recover(device_handle, res, 1);
 					//if res is still less than zero, fail out.
 					if(res < 0) goto cleanup;
@@ -183,6 +186,9 @@ void AlsaOutputDevice::workerThreadFunction() {
 				handled += res;
 			}
 			latency_predictor->endPass();
+			if(hadUnderrun) {
+				latency_predictor->hadUnderrun();
+			}
 		}
 	}
 	cleanup:
