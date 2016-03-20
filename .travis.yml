@@ -3,6 +3,8 @@ language: c++
 
 addons:
   apt:
+    sources:
+      - kalakris-cmake
     packages:
       - cmake
       - libasound2-dev
