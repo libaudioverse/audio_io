@@ -1,5 +1,7 @@
-sudo: false
-language: c++
+sudo: required
+dist: trusty
+language: cpp
+compiler: g++
 
 addons:
   apt:
