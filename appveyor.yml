@@ -14,5 +14,5 @@ build_script:
   - 'set lib=c:\libraries\boost_1_59_0\lib32-msvc-14.0;%lib%'
   - mkdir build
   - cd build
-  - 'cmake .. -G "NMake Makefiles JOM"'
+  - 'cmake .. -G "NMake Makefiles"'
   - cmake --build . --config Release
