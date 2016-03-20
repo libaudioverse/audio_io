@@ -1,0 +1,14 @@
+sudo: false
+
+addons:
+  apt:
+    packages:
+      - cmake
+      - libasound2-dev
+      - libboost-all-dev
+
+script:
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
