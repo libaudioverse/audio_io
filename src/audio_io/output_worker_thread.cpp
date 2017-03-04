@@ -1,4 +1,5 @@
 #include <audio_io/private/output_worker_thread.hpp>
+#include <audio_io/private/logging.hpp>
 #include <powercores/utilities.hpp>
 #include <inttypes.h>
 #include <thread>
@@ -17,8 +18,9 @@ returned_buffers(mixahead) {
 	this->mixahead = mixahead;
 	int bufferSize = this->destination_channels*this->destination_frames;
 	for(int i = 0; i < mixahead; i++) {
-		auto buff = new AudioBuffer();
+		auto buff = new AudioCommand();
 		buff->data = new float[bufferSize];
+		buff->type = AudioCommandType::buffer;
 		while(returned_buffers.push(buff) == false);
 	}
 	semaphore.signal(mixahead);
@@ -26,39 +28,45 @@ returned_buffers(mixahead) {
 	still_initial_mix_flag.test_and_set();
 	this->worker_thread = powercores::safeStartThread([&] () {workerThread();});
 	// Wait until we've pre-mixed enough data.
+	logDebug("OutputWorkerthread: initialized. Waiting on initial mix.");
 	while(still_initial_mix_flag.test_and_set()) std::this_thread::yield();
+	logDebug("OutputWorkerThread: finished initial mix.");
 }
 
 OutputWorkerThread::~OutputWorkerThread() {
-	// We free all the buffers, then clear the flag and shut down the background thread.
-	int freed = 0;
-	while(freed < mixahead) {
-		AudioBuffer* buff;
-		while(prepared_buffers.pop(buff) == false) std::this_thread::yield();
-		delete[] buff->data;
-		delete buff;
-	}
-	running_flag.clear();
+	AudioCommand cmd;
+	cmd.type = AudioCommandType::stop;
+	while(returned_buffers.push(&cmd) == false) std::this_thread::yield();
 	semaphore.signal();
 	worker_thread.join();
+	// Nothing else is manipulating the queues here, so dequeuing should always succeed.
+	AudioCommand* tmp;
+	while(returned_buffers.pop(tmp)) {
+		if(tmp->type == AudioCommandType::buffer) {
+			delete[] tmp->data;
+		}
+		delete tmp;
+	}
+	while(prepared_buffers.pop(tmp)) {
+		if(tmp->type == AudioCommandType::buffer) {
+			delete[] tmp->data;
+		}
+		delete tmp;
+	}
 }
 
 void OutputWorkerThread::workerThread() {
 	int mixed = 0;
 	bool finishedInitialMix = false;
-	while(running_flag.test_and_set()) {
-		AudioBuffer* buff;
-		bool gotBuffer = false; // Used for below spin-waiting loops.
-		// This is ugly, admittedly.
-		while((gotBuffer = returned_buffers.pop(buff)) == false && running_flag.test_and_set()); // Get a buffer.
-		// The above loop waits until we got a buffer xor we need to exit. So:
-		if(gotBuffer == false) return;
-		buff->used = 0;
-		std::fill(buff->data, buff->data+destination_frames*destination_channels, 0.0f);
-		converter.write(destination_frames, buff->data);
+	while(1) {
+		AudioCommand* cmd;
+		while(returned_buffers.pop(cmd) == false);
+		if(cmd->type == AudioCommandType::stop) return;
+		cmd->used = 0;
+		std::fill(cmd->data, cmd->data+destination_frames*destination_channels, 0.0f);
+		converter.write(destination_frames, cmd->data);
 		// If we got a buffer, there must be room to push the buffer, so this loop can't wait forever.
-		// If we didn't, we exited above.
-		while(returned_buffers.push(buff) == false); // Push it.
+		while(prepared_buffers.push(cmd) == false); // Push it.
 		// We need to count until we've finished the initial mixahead, then signal the constructor to continue.
 		if(finishedInitialMix == false) {
 			mixed += 1;
@@ -73,17 +81,18 @@ void OutputWorkerThread::workerThread() {
 	}
 }
 
-AudioBuffer* OutputWorkerThread::acquireBuffer() {
-	AudioBuffer* buff;
-	return prepared_buffers.pop(buff) ? buff : nullptr;
+AudioCommand* OutputWorkerThread::acquireBuffer() {
+	AudioCommand* buff;
+	auto gotBuff = prepared_buffers.pop(buff);
+	return gotBuff ? buff  : nullptr;
 }
 
-void OutputWorkerThread::releaseBuffer(AudioBuffer* buff) {
+void OutputWorkerThread::releaseBuffer(AudioCommand* buff) {
 	while(returned_buffers.push(buff) == false);
 	semaphore.signal();
 }
 
-int OutputWorkerThread::write(int count, float* destination) {
+int OutputWorkerThread::writeHelper(int count, float* destination) {
 	if(current_buffer == nullptr) {
 		current_buffer = acquireBuffer();
 	}
@@ -93,12 +102,23 @@ int OutputWorkerThread::write(int count, float* destination) {
 	float* start = current_buffer->data+destination_channels*current_buffer->used;
 	float* end = start+destination_channels*willWrite;
 	std::copy(start, end, destination);
-	current_buffer->used -= willWrite;
-	if(current_buffer->used <= 0) {
+	current_buffer->used += willWrite;
+	if(current_buffer->used == destination_frames) {
 		releaseBuffer(current_buffer);
 		current_buffer = nullptr;
 	}
 	return willWrite;
+}
+
+int OutputWorkerThread::write(int count, float* destination) {
+	int writtenTotal = 0, writtenThisTime  = 0;
+	do {
+		writtenThisTime = writeHelper(count, destination);
+		count -= writtenThisTime;
+		writtenTotal += writtenThisTime;
+		destination += destination_channels*writtenThisTime;
+	} while(writtenThisTime > 0);
+	return writtenTotal;
 }
 
 }

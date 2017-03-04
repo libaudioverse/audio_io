@@ -9,6 +9,7 @@ namespace audio_io {
 namespace implementation {
 
 class SampleFormatConverter;
+class OutputWorkerThread;
 
 class OutputDeviceImplementation: public OutputDevice {
 	public:
@@ -21,6 +22,8 @@ class OutputDeviceImplementation: public OutputDevice {
 	//This one is an estimate.  The amount of frames to write to trigger the callback approximately once.
 	int output_frames;
 	std::shared_ptr<SampleFormatConverter> sample_format_converter;
+	// Mixes audio and handles mixahead.  Created by init.
+	std::shared_ptr<OutputWorkerThread> worker_thread;
 	std::function<void(float*, int)> callback;
 	bool stopped = false; //Used by subclasses to kill the worker thread.
 	friend class OutputDeviceFactoryImplementation;

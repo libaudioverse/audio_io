@@ -8,8 +8,10 @@
 namespace audio_io {
 namespace implementation {
 
-// For internal use to this class: a buffer of audio.
-struct AudioBuffer {
+// For internal use to this class.
+enum class AudioCommandType { buffer, stop };
+struct AudioCommand {
+	AudioCommandType type = AudioCommandType::buffer;
 	float* data = nullptr;
 	int used = 0;
 };
@@ -36,12 +38,13 @@ class OutputWorkerThread {
 	void workerThread();
 	// These are used by the I/O thread, *not* the processing thread.
 	// Returns nullptr if no buffer is currently available.
-	AudioBuffer* acquireBuffer();
-	void releaseBuffer(AudioBuffer* buffer);
+	AudioCommand* acquireBuffer();
+	void releaseBuffer(AudioCommand* buffer);
+	int writeHelper(int count, float* destination);
 	std::thread worker_thread;
 	std::atomic_flag running_flag, still_initial_mix_flag;
-	boost::lockfree::spsc_queue<AudioBuffer*> prepared_buffers, returned_buffers;
-	AudioBuffer* current_buffer = nullptr;
+	boost::lockfree::spsc_queue<AudioCommand*> prepared_buffers, returned_buffers;
+	AudioCommand* current_buffer = nullptr;
 	LightweightSemaphore semaphore;
 	SampleFormatConverter converter;
 	int destination_channels, destination_frames, mixahead;

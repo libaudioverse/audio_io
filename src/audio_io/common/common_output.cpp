@@ -1,6 +1,7 @@
 #include <audio_io/audio_io.hpp>
 #include <audio_io/private/audio_outputs.hpp>
 #include <audio_io/private/sample_format_converter.hpp>
+#include <audio_io/private/output_worker_thread.hpp>
 #include <audio_io/private/logging.hpp>
 #include <string>
 #include <vector>
@@ -21,6 +22,7 @@ void OutputDeviceImplementation::init(std::function<void(float*, int)> callback,
 	output_sr = outputSr;
 	this->callback = callback;
 	sample_format_converter = std::make_shared<SampleFormatConverter>(callback, inputFrames, inputChannels, inputSr, outputChannels, outputSr);
+	worker_thread = std::make_shared<OutputWorkerThread>(callback, inputFrames, inputChannels, inputSr, outputChannels, outputSr, 2);
 	//Estimate: outputSr/inputSr is in output samples/input samples, the conversion factor by dimensional analysis.
 	output_frames = input_frames*output_sr/input_sr;
 	logDebug("DeviceFactoryImplementation initialized. "

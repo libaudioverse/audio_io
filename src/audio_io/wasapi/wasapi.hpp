@@ -20,7 +20,7 @@ class OutputDevice;
 
 namespace implementation {
 
-class LatencyPredictor;
+class OutputWorkerThread;
 
 class WasapiOutputDevice: public OutputDeviceImplementation {
 	public:
@@ -39,8 +39,6 @@ class WasapiOutputDevice: public OutputDeviceImplementation {
 	REFERENCE_TIME period = 0;
 	double period_in_secs = 0.0;
 	UINT32 wasapi_buffer_size;
-	//We can't know ahead of time what the minimum latency we can deal with is, so we need to dynamically allocate the predictor.
-	LatencyPredictor* latency_predictor = nullptr;
 	//The rest of the variables live in the mixing thread.
 };
 
