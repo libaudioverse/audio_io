@@ -28,9 +28,6 @@ freely, subject to the following restrictions:
 #include <cassert>
 
 
-namespace audio_io {
-namespace implementation {
-
 #if defined(_WIN32)
 //---------------------------------------------------------
 // Semaphore (Windows)
@@ -39,6 +36,9 @@ namespace implementation {
 #include <windows.h>
 #undef min
 #undef max
+
+namespace audio_io {
+namespace implementation {
 
 class Semaphore
 {
@@ -72,6 +72,9 @@ public:
 };
 
 
+}
+}
+
 #elif defined(__MACH__)
 //---------------------------------------------------------
 // Semaphore (Apple iOS and OSX)
@@ -79,6 +82,9 @@ public:
 //---------------------------------------------------------
 
 #include <mach/mach.h>
+
+namespace audio_io {
+namespace implementation {
 
 class Semaphore
 {
@@ -120,12 +126,19 @@ public:
 };
 
 
+}
+}
+
 #elif defined(__unix__)
 //---------------------------------------------------------
 // Semaphore (POSIX, Linux)
 //---------------------------------------------------------
 
 #include <semaphore.h>
+#include <errno.h>
+
+namespace audio_io {
+namespace implementation {
 
 class Semaphore
 {
@@ -173,6 +186,9 @@ public:
 };
 
 
+}
+}
+
 #else
 
 #error Unsupported platform!
@@ -183,6 +199,10 @@ public:
 //---------------------------------------------------------
 // LightweightSemaphore
 //---------------------------------------------------------
+
+namespace audio_io {
+namespace implementation {
+	
 class LightweightSemaphore
 {
 private:
