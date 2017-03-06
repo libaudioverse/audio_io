@@ -11,8 +11,6 @@
 namespace audio_io {
 namespace implementation {
 
-class LatencyPredictor;
-
 class AlsaOutputDevice: public OutputDeviceImplementation {
 	public:
 	AlsaOutputDevice(std::function<void(float*, int)> callback, std::string name, int sr, int channels, int blockSize, float minLatency, float startLatency, float maxLatency);
@@ -20,11 +18,10 @@ class AlsaOutputDevice: public OutputDeviceImplementation {
 	void stop();
 	private:
 	void workerThreadFunction();
-	std::thread worker_thread;
+	std::thread io_thread;
 	std::atomic_flag worker_running;
 	std::string device_name;
 	snd_pcm_t *device_handle = nullptr;
-	LatencyPredictor* latency_predictor = nullptr;
 	int alsa_buffer_frames;
 };
 
