@@ -50,15 +50,15 @@ AlsaOutputDevice::AlsaOutputDevice(std::function<void(float*, int)> callback, st
 	if(res < 0) {
 		throw AudioIOError("ALSA: couldn't set access.");
 	}
-	snd_pcm_uframes_t alsaPeriodSize = 512;
+	snd_pcm_uframes_t alsaPeriodSize = 2048;
 	res = snd_pcm_hw_params_set_period_size_near(device_handle, params, &alsaPeriodSize, &dir);
 	if(res < 0) {
 		throw AudioIOError("ALSA: Couldn't set period size.");
 	}
 	logDebug("Alsa period size: %i", alsaPeriodSize);
 	snd_pcm_uframes_t alsaBufferSize = 2*alsaPeriodSize;
-	// To first multiple larger than 1024.
-	while(alsaBufferSize < 1024) alsaBufferSize += alsaPeriodSize;
+	// To first multiple larger than 8192.
+	while(alsaBufferSize < 8192) alsaBufferSize += alsaPeriodSize;
 	res = snd_pcm_hw_params_set_buffer_size_first(device_handle, params, &alsaBufferSize);
 	if(res < 0) {
 		throw AudioIOError("ALSA: couldn't set buffer size.");
