@@ -59,6 +59,9 @@ void OutputWorkerThread::workerThread() {
 	int mixed = 0;
 	bool finishedInitialMix = false;
 	while(1) {
+		// the semaphore is signaled by returning buffers or a request to exit, so we wait on it.
+		// It'll pause us when there's no more buffers.
+		semaphore.wait();
 		AudioCommand* cmd;
 		while(returned_buffers.pop(cmd) == false);
 		if(cmd->type == AudioCommandType::stop) return;
@@ -75,9 +78,6 @@ void OutputWorkerThread::workerThread() {
 				finishedInitialMix = true;
 			}
 		}
-		// the semaphore is signaled by returning buffers or a request to exit, so we wait on it.
-		// It'll pause us when there's no more buffers.
-		semaphore.wait();
 	}
 }
 

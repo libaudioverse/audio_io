@@ -117,30 +117,35 @@ void WasapiOutputDevice::wasapiMixingThreadFunction() {
 	IAudioRenderClient *renderClient_raw = nullptr;
 	UINT32 padding, bufferSize;
 	client->GetBufferSize(&bufferSize);
-	client->GetCurrentPadding(&padding);
 	client->GetService(IID_IAudioRenderClient, (void**)&renderClient_raw);
 	auto renderClient = wrapComPointer(renderClient_raw);
 	HANDLE event = CreateEvent(NULL, FALSE, FALSE, NULL);
 	client->SetEventHandle(event);
+	// We need to output whatever we can, without having to zero the rest of the packet for Wasapi.
+	float* intermediateStorage = new float[bufferSize*output_channels];
+	std::fill(intermediateStorage, intermediateStorage+bufferSize*output_channels, 0.0f);
 	client->Start();
 	logDebug("Wasapi mixing thread: audio client is started.  Mixing audio.");
-	BYTE* audioBuffer;
 	while(should_continue.test_and_set()) {
-		WaitForSingleObject(event, 0);
 		padding = 0;
 		client->GetCurrentPadding(&padding);
-		auto toRequest = bufferSize-padding;
+		// We have the padding. This value cannot decrease while we write, only increase.
+		// So go to intermediateStorage, and figure out how much we have to request.
+		int toRequest = bufferSize-padding;
+		toRequest = worker_thread->write(toRequest, intermediateStorage);
+		if(toRequest == 0) continue;
+		BYTE* audioBuffer;
 		if(renderClient->GetBuffer(toRequest, &audioBuffer) == S_OK) {
-			float* tmp = (float*)audioBuffer; // Warning: technically violates strict aliasing.
-			int written = worker_thread->write(toRequest, tmp);
-			std::fill(tmp+written*output_channels, tmp+toRequest*output_channels, 0.0f);
-			renderClient->ReleaseBuffer(bufferSize-padding, 0);
+			memcpy(audioBuffer, intermediateStorage, sizeof(float)*output_channels*toRequest);
+			renderClient->ReleaseBuffer(toRequest, 0);
 		}
+		WaitForSingleObject(event, 0);
 	}
 	client->Stop();
 	client->Reset();
 	CoUninitialize();
 	CloseHandle(event);
+	delete[] intermediateStorage;
 	logDebug("Wasapi mixing thread: exiting.");
 }
 
