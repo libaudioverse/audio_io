@@ -108,6 +108,8 @@ void WasapiOutputDevice::stop() {
 }
 
 void WasapiOutputDevice::wasapiMixingThreadFunction() {
+	// Wait on the initial mix.
+	worker_thread->awaitInitialMix();
 	//Stuff here can run outside the apartment.
 	auto res = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	if(IS_ERROR(res)) {

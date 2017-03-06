@@ -34,6 +34,8 @@ class OutputWorkerThread {
 	// The returned value is less than count if enough data isn't available. You can use this to detect underruns by comparing.
 	// use this only from the audio thread.
 	int write(int count, float* destination);
+	// Wait for us to have mixed enough audio to start up.
+	void awaitInitialMix();
 	private:
 	void workerThread();
 	// These are used by the I/O thread, *not* the processing thread.
@@ -42,7 +44,8 @@ class OutputWorkerThread {
 	void releaseBuffer(AudioCommand* buffer);
 	int writeHelper(int count, float* destination);
 	std::thread worker_thread;
-	std::atomic_flag running_flag, still_initial_mix_flag;
+	std::atomic_flag running_flag;
+	std::atomic<int> finished_initial_mix;
 	boost::lockfree::spsc_queue<AudioCommand*> prepared_buffers, returned_buffers;
 	AudioCommand* current_buffer = nullptr;
 	LightweightSemaphore semaphore;

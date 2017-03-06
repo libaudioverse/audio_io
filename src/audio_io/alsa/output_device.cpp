@@ -129,6 +129,7 @@ goto CLEANUP;\
 }} while(0)
 
 void AlsaOutputDevice::workerThreadFunction() {
+	worker_thread->awaitInitialMix();
 	float* workspace = new float[alsa_buffer_frames*output_channels];
 	std::fill(workspace, workspace+alsa_buffer_frames*output_channels, 0.0f);
 	while(worker_running.test_and_set()) {

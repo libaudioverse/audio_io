@@ -25,12 +25,8 @@ returned_buffers(mixahead) {
 	}
 	semaphore.signal(mixahead);
 	running_flag.test_and_set();
-	still_initial_mix_flag.test_and_set();
+	finished_initial_mix.store(0);
 	this->worker_thread = powercores::safeStartThread([&] () {workerThread();});
-	// Wait until we've pre-mixed enough data.
-	logDebug("OutputWorkerthread: initialized. Waiting on initial mix.");
-	while(still_initial_mix_flag.test_and_set()) std::this_thread::yield();
-	logDebug("OutputWorkerThread: finished initial mix.");
 }
 
 OutputWorkerThread::~OutputWorkerThread() {
@@ -55,6 +51,12 @@ OutputWorkerThread::~OutputWorkerThread() {
 	}
 }
 
+void OutputWorkerThread::awaitInitialMix() {
+	logDebug("OutputWorkerthread: initialized. Waiting on initial mix.");
+	while(finished_initial_mix.load() == 0) std::this_thread::yield();
+	logDebug("OutputWorkerThread: finished initial mix.");
+}
+
 void OutputWorkerThread::workerThread() {
 	int mixed = 0;
 	bool finishedInitialMix = false;
@@ -74,7 +76,7 @@ void OutputWorkerThread::workerThread() {
 		if(finishedInitialMix == false) {
 			mixed += 1;
 			if(mixed == mixahead) {
-				still_initial_mix_flag.clear(); // Allow the constructor to return.
+				finished_initial_mix.store(1); // Allow the constructor to return.
 				finishedInitialMix = true;
 			}
 		}
