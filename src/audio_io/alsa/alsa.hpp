@@ -13,7 +13,7 @@ namespace implementation {
 
 class AlsaOutputDevice: public OutputDeviceImplementation {
 	public:
-	AlsaOutputDevice(std::function<void(float*, int)> callback, std::string name, int sr, int channels, int blockSize, float minLatency, float startLatency, float maxLatency);
+	AlsaOutputDevice(std::function<void(float*, int)> callback, std::string name, int sr, int channels, int blockSize, int mixahead);
 	~AlsaOutputDevice();
 	void stop();
 	private:
@@ -31,7 +31,7 @@ class AlsaOutputDeviceFactory: public OutputDeviceFactoryImplementation {
 	std::string getName() override;
 	std::vector<std::string> getOutputNames() override;
 	std::vector<int> getOutputMaxChannels() override;
-	std::unique_ptr<OutputDevice> createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, float minLatency, float startLatency, float maxLatency) override;
+	std::unique_ptr<OutputDevice> createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, int mixahead) override;
 	private:
 	void rescan();
 	std::vector<std::string> device_names;

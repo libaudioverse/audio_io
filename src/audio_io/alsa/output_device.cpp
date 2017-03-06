@@ -17,7 +17,7 @@
 namespace audio_io {
 namespace implementation {
 
-AlsaOutputDevice::AlsaOutputDevice(std::function<void(float*, int)> callback, std::string name, int sr, int channels, int blockSize, float minLatency, float startLatency, float maxLatency) {
+AlsaOutputDevice::AlsaOutputDevice(std::function<void(float*, int)> callback, std::string name, int sr, int channels, int blockSize, int mixahead) {
 	snd_pcm_hw_params_t *params;
 	snd_pcm_sw_params_t *params_sw;
 	snd_pcm_hw_params_alloca(&params);
@@ -96,10 +96,12 @@ AlsaOutputDevice::AlsaOutputDevice(std::function<void(float*, int)> callback, st
 		throw AudioIOError("ALSA: couldn't install software params.");
 	}
 	//Keep this block.  It's very useful to be able to uncomment it for debugging.
+	/*
 	snd_output_t *output = nullptr;
 	snd_output_stdio_attach(&output, stdout, 0);
 	snd_pcm_dump(device_handle, output);
-	init(callback, blockSize, channels, sr, (int)alsaChannels, (int)alsaSr);
+	*/
+	init(callback, blockSize, channels, sr, (int)alsaChannels, (int)alsaSr, mixahead);
 	worker_running.test_and_set();
 	io_thread = std::thread([&] () {workerThreadFunction();});
 }

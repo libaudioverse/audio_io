@@ -27,11 +27,11 @@ std::vector<int> AlsaOutputDeviceFactory::getOutputMaxChannels() {
 	return device_channels;
 }
 
-std::unique_ptr<OutputDevice> AlsaOutputDeviceFactory::createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, float minLatency, float startLatency, float maxLatency) {
+std::unique_ptr<OutputDevice> AlsaOutputDeviceFactory::createDevice(std::function<void(float*, int)> getBuffer, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, int mixahead) {
 	std::string n;
 	if(index == -1) n = "default";
 	else n = device_names[index];
-	return std::unique_ptr<OutputDevice>(new AlsaOutputDevice(getBuffer, n, sr, channels, blockSize, minLatency, startLatency, maxLatency));
+	return std::unique_ptr<OutputDevice>(new AlsaOutputDevice(getBuffer, n, sr, channels, blockSize, mixahead));
 }
 
 void AlsaOutputDeviceFactory::rescan() {
