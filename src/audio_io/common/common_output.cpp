@@ -14,7 +14,7 @@ namespace implementation {
 /**Code common to all backends, i.e. enumeration.*/
 
 //these are the two steps in initialization, and are consequently put before the destructor.
-void OutputDeviceImplementation::init(std::function<void(float*, int)> callback, int inputFrames, int inputChannels, int inputSr, int outputChannels, int outputSr) {
+void OutputDeviceImplementation::init(std::function<void(float*, int)> callback, int inputFrames, int inputChannels, int inputSr, int outputChannels, int outputSr, int mixahead) {
 	input_frames = inputFrames;
 	input_channels = inputChannels;
 	input_sr = inputSr;
@@ -22,7 +22,7 @@ void OutputDeviceImplementation::init(std::function<void(float*, int)> callback,
 	output_sr = outputSr;
 	this->callback = callback;
 	sample_format_converter = std::make_shared<SampleFormatConverter>(callback, inputFrames, inputChannels, inputSr, outputChannels, outputSr);
-	worker_thread = std::make_shared<OutputWorkerThread>(callback, inputFrames, inputChannels, inputSr, outputChannels, outputSr, 2);
+	worker_thread = std::make_shared<OutputWorkerThread>(callback, inputFrames, inputChannels, inputSr, outputChannels, outputSr, mixahead);
 	//Estimate: outputSr/inputSr is in output samples/input samples, the conversion factor by dimensional analysis.
 	output_frames = input_frames*output_sr/input_sr;
 	logDebug("DeviceFactoryImplementation initialized. "

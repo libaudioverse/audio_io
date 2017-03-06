@@ -17,7 +17,7 @@ class OutputDeviceImplementation: public OutputDevice {
 	protected:
 	OutputDeviceImplementation() = default;
 	//Callback parameters: output buffer, number of channels to write.
-	virtual void init(std::function<void(float*, int)> callback, int inputFrames, int inputChannels, int inputSr, int outputChannels, int outputSr);
+	virtual void init(std::function<void(float*, int)> callback, int inputFrames, int inputChannels, int inputSr, int outputChannels, int outputSr, int mixahead);
 	int input_frames, input_channels, input_sr, output_channels, output_sr;
 	//This one is an estimate.  The amount of frames to write to trigger the callback approximately once.
 	int output_frames;

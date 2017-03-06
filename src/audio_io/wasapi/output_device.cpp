@@ -17,7 +17,7 @@ namespace implementation {
 /**Number of samples to write at once.*/
 const int wasapi_chunk_length = 512;
 
-WasapiOutputDevice::WasapiOutputDevice(std::function<void(float*, int)> callback, std::shared_ptr<IMMDevice> device, int inputFrames, int inputChannels, int inputSr, double minLatency, double startLatency, double maxLatency)  {
+WasapiOutputDevice::WasapiOutputDevice(std::function<void(float*, int)> callback, std::shared_ptr<IMMDevice> device, int inputFrames, int inputChannels, int inputSr, int mixahead)  {
 	this->device = device;
 	logDebug("Attempting to initialize a Wasapi device.");
 	IAudioClient* client_raw = nullptr;
@@ -87,7 +87,7 @@ WasapiOutputDevice::WasapiOutputDevice(std::function<void(float*, int)> callback
 	wasapi_buffer_size = bufferSize;
 	logDebug("Wasapi buffer size: %i", wasapi_buffer_size);
 	int outputSr = this->format.Format.nSamplesPerSec;
-	init(callback, inputFrames, inputChannels, inputSr, this->format.Format.nChannels, outputSr);
+	init(callback, inputFrames, inputChannels, inputSr, this->format.Format.nChannels, outputSr, mixahead);
 	//At this point, we no longer need to go via the STA for the client interface.
 	should_continue.test_and_set();
 	wasapi_mixing_thread = std::thread(&WasapiOutputDevice::wasapiMixingThreadFunction, this);

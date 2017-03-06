@@ -24,7 +24,7 @@ class OutputWorkerThread;
 
 class WasapiOutputDevice: public OutputDeviceImplementation {
 	public:
-	WasapiOutputDevice(std::function<void(float*, int)> callback, std::shared_ptr<IMMDevice> device, int inputFrames, int inputChannels, int inputSr, double minLatency, double startLatency, double maxLatency);
+	WasapiOutputDevice(std::function<void(float*, int)> callback, std::shared_ptr<IMMDevice> device, int inputFrames, int inputChannels, int inputSr, int mixahead);
 	~WasapiOutputDevice();
 	void stop() override;
 	private:
@@ -48,7 +48,7 @@ class WasapiOutputDeviceFactory: public OutputDeviceFactoryImplementation {
 	~WasapiOutputDeviceFactory();
 	std::vector<std::string> getOutputNames() override;
 	std::vector<int> getOutputMaxChannels() override;
-	std::unique_ptr<OutputDevice> createDevice(std::function<void(float*, int)> callback, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, float minLatency, float startLatency, float maxLatency) override;
+	std::unique_ptr<OutputDevice> createDevice(std::function<void(float*, int)> callback, int index, unsigned int channels, unsigned int sr, unsigned int blockSize, int mixahead) override;
 	unsigned int getOutputCount() override;
 	std::string getName();
 	private:
