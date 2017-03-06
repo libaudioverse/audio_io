@@ -24,7 +24,8 @@ SineGen::SineGen(float freq): frequency(freq), phase(0) {
 
 void SineGen::operator()(float* block, int channels) {
 	for(int i = 0; i < block_size; i++) {
-		for(int j = 0; j < channels; j++) block[i*channels+j] = sinf(2*PI*phase);
+		float value = 0.3*sinf(2*PI*phase);
+		for(int j = 0; j < channels; j++) block[i*channels+j] = value;
 		phase+=delta;
 	}
 	phase=phase-floorf(phase);
