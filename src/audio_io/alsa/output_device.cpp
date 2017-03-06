@@ -122,8 +122,8 @@ void AlsaOutputDevice::stop() {
 
 #define ALSAREC(err) do { \
 if(err < 0) {\
-if(snd_pcm_recover(device_handle, err, 0) < 0) {\
-logDebug("ALSA: audio I/O thread encountered unrecoverable error %i", err);\
+if(snd_pcm_recover(device_handle, err, 1) < 0) {\
+logDebug("ALSA: audio I/O thread encountered unrecoverable error %i: %s", err, snd_strerror(err));\
 goto CLEANUP;\
 }\
 }} while(0)
